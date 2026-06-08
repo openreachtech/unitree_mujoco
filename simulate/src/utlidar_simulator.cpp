@@ -117,7 +117,7 @@ void UtLidarSimulator::update(double sim_time)
 
     mjtNum origin[3] = {site_pos[0], site_pos[1], site_pos[2]};
     mjtNum dir_world[3];
-    mjtNum geomid[1];
+    int geomid[1] = {-1};
 
     for (const auto& dir_local : ray_dirs_)
     {

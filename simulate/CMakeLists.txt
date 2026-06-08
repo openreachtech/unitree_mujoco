@@ -42,6 +42,13 @@ link_libraries(
   fmt
 )
 
-add_executable(unitree_mujoco ${SIM_SRC} src/main.cc)
+add_executable(
+  unitree_mujoco
+  ${SIM_SRC}
+  src/main.cc
+  src/utlidar_simulator.cpp
+  src/height_scan_visualizer.cpp
+  src/height_scan_dds.cpp
+)
 
 add_executable(jstest src/joystick/jstest.cc src/joystick/joystick.cc)

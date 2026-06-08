@@ -9,10 +9,19 @@
 #include <unitree/idl/hg/BmsState_.hpp>
 #include <unitree/idl/hg/IMUState_.hpp>
 
+#include <array>
+#include <cmath>
 #include <iostream>
+#include <memory>
 
 #include "param.h"
 #include "physics_joystick.h"
+#include <unitree/dds_wrapper/common/Subscription.h>
+#include <unitree/idl/ros2/PointCloud2_.hpp>
+
+#include "height_scan_dds.h"
+#include "height_scan_visualizer.h"
+#include "utlidar_simulator.h"
 
 #define MOTOR_SENSOR_NUM 3
 
@@ -254,7 +263,86 @@ private:
     unitree::common::RecurrentThreadPtr thread_;
 };
 
-using Go2Bridge = RobotBridge<unitree::robot::go2::subscription::LowCmd, unitree::robot::go2::publisher::LowState>;
+class Go2Bridge
+    : public RobotBridge<unitree::robot::go2::subscription::LowCmd, unitree::robot::go2::publisher::LowState>
+{
+public:
+    Go2Bridge(mjModel* model, mjData* data)
+        : RobotBridge<unitree::robot::go2::subscription::LowCmd, unitree::robot::go2::publisher::LowState>(
+              model, data)
+    {
+        if (param::config.robot == "go2")
+        {
+            utlidar_ = std::make_unique<UtLidarSimulator>(model, data);
+            height_scan_viz_ = std::make_unique<HeightScanVisualizer>(model, data);
+            height_scan_sub_ = std::make_shared<
+                unitree::robot::SubscriptionBase<sensor_msgs::msg::dds_::PointCloud2_>>(
+                height_scan::kHeightScanTopic);
+            height_scan_sub_->set_timeout_ms(500);
+            std::cout << "Go2Bridge: subscribed to " << height_scan::kHeightScanTopic << std::endl;
+        }
+    }
+
+    void run() override
+    {
+        RobotBridge::run();
+        if (utlidar_ && utlidar_->enabled())
+        {
+            utlidar_->update(mj_data_->time);
+        }
+        update_height_scan_viz();
+    }
+
+private:
+    void update_height_scan_viz()
+    {
+        if (!height_scan_viz_ || !height_scan_viz_->enabled() || imu_quat_adr_ < 0)
+        {
+            return;
+        }
+
+        const int site_id = mj_name2id(mj_model_, mjOBJ_SITE, "utlidar");
+        if (site_id < 0)
+        {
+            return;
+        }
+
+        if (!height_scan_sub_ || height_scan_sub_->isTimeout())
+        {
+            return;
+        }
+
+        std::vector<float> grid;
+        {
+            std::lock_guard<std::mutex> lock(height_scan_sub_->mutex_);
+            if (!height_scan::parse_pointcloud2(height_scan_sub_->msg_, grid))
+            {
+                return;
+            }
+        }
+
+        const std::array<float, 4> imu_quat = {
+            static_cast<float>(mj_data_->sensordata[imu_quat_adr_ + 0]),
+            static_cast<float>(mj_data_->sensordata[imu_quat_adr_ + 1]),
+            static_cast<float>(mj_data_->sensordata[imu_quat_adr_ + 2]),
+            static_cast<float>(mj_data_->sensordata[imu_quat_adr_ + 3]),
+        };
+
+        const float w = imu_quat[0];
+        const float x = imu_quat[1];
+        const float y = imu_quat[2];
+        const float z = imu_quat[3];
+        const float yaw = std::atan2(2.0f * (w * z + x * y), 1.0f - 2.0f * (y * y + z * z));
+
+        const mjtNum* site_pos = mj_data_->site_xpos + 3 * site_id;
+        height_scan_viz_->update(grid, site_pos, yaw);
+    }
+
+    std::unique_ptr<UtLidarSimulator> utlidar_;
+    std::unique_ptr<HeightScanVisualizer> height_scan_viz_;
+    std::shared_ptr<unitree::robot::SubscriptionBase<sensor_msgs::msg::dds_::PointCloud2_>>
+        height_scan_sub_;
+};
 
 class G1Bridge : public RobotBridge<unitree::robot::g1::subscription::LowCmd, unitree::robot::g1::publisher::LowState>
 {

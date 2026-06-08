@@ -32,6 +32,7 @@
 #include <mujoco/mujoco.h>
 #include "simulate.h"
 #include "array_safety.h"
+#include "height_scan_visualizer.h"
 #include "unitree_sdk2_bridge.h"
 #include "param.h"
 
@@ -630,6 +631,10 @@ void user_key_cb(GLFWwindow* window, int key, int scancode, int act, int mods) {
       } else if (key==GLFW_KEY_8 || key==GLFW_KEY_DOWN) {
         elastic_band.length_ += 0.1;
       }
+    }
+    if (key == GLFW_KEY_H && g_height_scan_viz) {
+      g_height_scan_viz->set_enabled(!g_height_scan_viz->enabled());
+      std::cout << "Height scan viz: " << (g_height_scan_viz->enabled() ? "on" : "off") << std::endl;
     }
     if(key==GLFW_KEY_BACKSPACE) {
       mj_resetData(m, d);

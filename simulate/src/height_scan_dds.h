@@ -14,7 +14,8 @@ inline constexpr int kGridSize = kGridNx * kGridNy;
 inline constexpr float kSizeX = 1.6f;
 inline constexpr float kSizeY = 1.0f;
 inline constexpr float kResolution = 0.1f;
-inline constexpr float kOffset = 0.5f;
+// Matches deploy HeightScanUpdater kHeightScanOffset (nominal base_z 0.35 + LiDAR z 0.075).
+inline constexpr float kOffset = 0.425f;
 inline constexpr float kEmpty = -1.0f;
 
 bool parse_pointcloud2(

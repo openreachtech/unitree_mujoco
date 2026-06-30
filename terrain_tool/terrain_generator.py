@@ -86,7 +86,7 @@ class TerrainGenerator:
     # Add Box to scene
     def AddBox(self,
                position=[1.0, 0.0, 0.0],
-               euler=[0.0, 0.0, 0.0], 
+               euler=[0.0, 0.0, 0.0],
                size=[0.1, 0.1, 0.1]):
         geo = xml_et.SubElement(self.worldbody, "geom")
         geo.attrib["pos"] = list_to_str(position)
@@ -95,12 +95,12 @@ class TerrainGenerator:
             0.5 * np.array(size))  # half size of box for mujoco
         quat = euler_to_quat(euler[0], euler[1], euler[2])
         geo.attrib["quat"] = list_to_str(quat)
-    
+
     def AddGeometry(self,
                position=[1.0, 0.0, 0.0],
-               euler=[0.0, 0.0, 0.0], 
+               euler=[0.0, 0.0, 0.0],
                size=[0.1, 0.1],geo_type="box"):
-        
+
         # geo_type supports "plane", "sphere", "capsule", "ellipsoid", "cylinder", "box"
         geo = xml_et.SubElement(self.worldbody, "geom")
         geo.attrib["pos"] = list_to_str(position)
@@ -113,10 +113,10 @@ class TerrainGenerator:
     def AddStairs(self,
                   init_pos=[1.0, 0.0, 0.0],
                   yaw=0.0,
-                  width=0.2,
-                  height=0.15,
-                  length=1.5,
-                  stair_nums=10):
+                  width=0.27,
+                  height=0.17,
+                  length=2.5,
+                  stair_nums=20):
 
         local_pos = [0.0, 0.0, -0.5 * height]
         for i in range(stair_nums):
@@ -262,7 +262,7 @@ if __name__ == "__main__":
 
     # Box obstacle
     tg.AddBox(position=[1.5, 0.0, 0.1], euler=[0, 0, 0.0], size=[1, 1.5, 0.2])
-    
+
     # Geometry obstacle
     # geo_type supports "plane", "sphere", "capsule", "ellipsoid", "cylinder", "box"
     tg.AddGeometry(position=[1.5, 0.0, 0.25], euler=[0, 0, 0.0], size=[1.0,0.5,0.5],geo_type="cylinder")

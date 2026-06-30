@@ -115,7 +115,7 @@ class TerrainGenerator:
                   yaw=0.0,
                   width=0.27,
                   height=0.17,
-                  length=2.5,
+                  length=2.0,
                   stair_nums=20):
 
         local_pos = [0.0, 0.0, -0.5 * height]

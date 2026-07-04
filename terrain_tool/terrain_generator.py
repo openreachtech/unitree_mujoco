@@ -113,8 +113,8 @@ class TerrainGenerator:
     def AddStairs(self,
                   init_pos=[1.0, 0.0, 0.0],
                   yaw=0.0,
-                  width=0.27,
-                  height=0.17,
+                  width=0.23,
+                  height=0.18,
                   length=2.0,
                   stair_nums=20):
 

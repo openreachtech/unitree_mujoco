@@ -1,6 +1,7 @@
 <mujoco model="scene">
   <option timestep="0.005"/>
   <include file="go2.xml"/>
+  <include file="height_scan_mocap.xml"/>
 
   <!--
   <default>

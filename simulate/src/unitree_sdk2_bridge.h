@@ -10,9 +10,12 @@
 #include <unitree/idl/hg/IMUState_.hpp>
 
 #include <iostream>
+#include <memory>
 
 #include "param.h"
 #include "physics_joystick.h"
+#include "height_map_simulator.h"
+#include "height_scan_visualizer.h"
 
 #define MOTOR_SENSOR_NUM 3
 
@@ -254,7 +257,43 @@ private:
     unitree::common::RecurrentThreadPtr thread_;
 };
 
-using Go2Bridge = RobotBridge<unitree::robot::go2::subscription::LowCmd, unitree::robot::go2::publisher::LowState>;
+class Go2Bridge : public RobotBridge<unitree::robot::go2::subscription::LowCmd,
+                                     unitree::robot::go2::publisher::LowState>
+{
+public:
+    Go2Bridge(mjModel* model, mjData* data)
+        : RobotBridge<unitree::robot::go2::subscription::LowCmd,
+                      unitree::robot::go2::publisher::LowState>(model, data)
+    {
+        if (param::config.robot == "go2")
+        {
+            height_map_ = std::make_unique<HeightMapSimulator>(model, data);
+            height_scan_viz_ = std::make_unique<HeightScanVisualizer>(model, data);
+        }
+    }
+
+    void run() override
+    {
+        RobotBridge::run();
+        if (height_map_ && height_map_->enabled())
+        {
+            height_map_->update(mj_data_->time);
+            if (height_scan_viz_ && height_scan_viz_->enabled())
+            {
+                const mjtNum* site = height_map_->site_pos();
+                if (site)
+                {
+                    height_scan_viz_->update(
+                        height_map_->height_scan(), site, height_map_->imu_yaw());
+                }
+            }
+        }
+    }
+
+private:
+    std::unique_ptr<HeightMapSimulator> height_map_;
+    std::unique_ptr<HeightScanVisualizer> height_scan_viz_;
+};
 
 class G1Bridge : public RobotBridge<unitree::robot::g1::subscription::LowCmd, unitree::robot::g1::publisher::LowState>
 {

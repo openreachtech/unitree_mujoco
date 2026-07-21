@@ -309,14 +309,14 @@ if __name__ == "__main__":
     tg.AddSuspendStairs(init_pos=[1.0, 6.0, 0.0], yaw=0.0)
 
     # Thin walls (3 types): [width, height] = [0.05, 0.25], [0.08, 0.20], [0.10, 0.15], all 1 m long
-    tg.AddWall(init_pos=[3.0, 0.0, 0.0], yaw=0.0, width=0.05, height=0.25, length=1.0)
-    tg.AddWall(init_pos=[3.0, 1.5, 0.0], yaw=0.0, width=0.08, height=0.20, length=1.0)
-    tg.AddWall(init_pos=[3.0, 3.0, 0.0], yaw=0.0, width=0.10, height=0.15, length=1.0)
+    tg.AddWall(init_pos=[-3.0, 0.0, 0.0], yaw=0.0, width=0.05, height=0.25, length=1.0)
+    tg.AddWall(init_pos=[-3.0, 1.5, 0.0], yaw=0.0, width=0.08, height=0.20, length=1.0)
+    tg.AddWall(init_pos=[-3.0, 3.0, 0.0], yaw=0.0, width=0.10, height=0.15, length=1.0)
 
     # Floating thin walls (3 types): same dimensions, flat plate hovering at top height
-    tg.AddFloatingWall(init_pos=[4.5, 0.0, 0.0], yaw=0.0, width=0.05, height=0.25, length=1.0)
-    tg.AddFloatingWall(init_pos=[4.5, 1.5, 0.0], yaw=0.0, width=0.08, height=0.20, length=1.0)
-    tg.AddFloatingWall(init_pos=[4.5, 3.0, 0.0], yaw=0.0, width=0.10, height=0.15, length=1.0)
+    tg.AddFloatingWall(init_pos=[-4.5, 0.0, 0.0], yaw=0.0, width=0.05, height=0.25, length=1.0)
+    tg.AddFloatingWall(init_pos=[-4.5, 1.5, 0.0], yaw=0.0, width=0.08, height=0.20, length=1.0)
+    tg.AddFloatingWall(init_pos=[-4.5, 3.0, 0.0], yaw=0.0, width=0.10, height=0.15, length=1.0)
 
     # Rough ground
     tg.AddRoughGround(init_pos=[-2.5, 5.0, 0.0],

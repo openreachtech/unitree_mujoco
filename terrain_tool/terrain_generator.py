@@ -113,8 +113,8 @@ class TerrainGenerator:
     def AddStairs(self,
                   init_pos=[1.0, 0.0, 0.0],
                   yaw=0.0,
-                  width=0.23,
-                  height=0.18,
+                  width=0.26,
+                  height=0.21,
                   length=2.0,
                   stair_nums=20):
 
@@ -143,6 +143,36 @@ class TerrainGenerator:
             self.AddBox([x + init_pos[0], y + init_pos[1], local_pos[2]],
                         [0.0, 0.0, yaw],
                         [width, length, abs(height - gap)])
+
+    def AddWall(self,
+                init_pos=[1.0, 0.0, 0.0],
+                yaw=0.0,
+                width=0.05,
+                height=0.25,
+                length=1.0):
+
+        # Thin wall standing on the ground.
+        # width: thickness (x), length: along wall (y), height: tall (z)
+        x, y = rot2d(0.0, 0.0, yaw)
+        self.AddBox(
+            [x + init_pos[0], y + init_pos[1], init_pos[2] + 0.5 * height],
+            [0.0, 0.0, yaw], [width, length, height])
+
+    def AddFloatingWall(self,
+                        init_pos=[1.0, 0.0, 0.0],
+                        yaw=0.0,
+                        width=0.05,
+                        height=0.25,
+                        length=1.0,
+                        plate_thickness=0.02):
+
+        # Floating thin wall: no supporting wall, only a flat plate hovering
+        # at the top height (its top face aligns with a normal wall's top).
+        x, y = rot2d(0.0, 0.0, yaw)
+        self.AddBox(
+            [x + init_pos[0], y + init_pos[1],
+             init_pos[2] + height - 0.5 * plate_thickness],
+            [0.0, 0.0, yaw], [width, length, plate_thickness])
 
     def AddRoughGround(self,
                        init_pos=[1.0, 0.0, 0.0],
@@ -277,6 +307,16 @@ if __name__ == "__main__":
 
     # Suspend stairs
     tg.AddSuspendStairs(init_pos=[1.0, 6.0, 0.0], yaw=0.0)
+
+    # Thin walls (3 types): [width, height] = [0.05, 0.25], [0.08, 0.20], [0.10, 0.15], all 1 m long
+    tg.AddWall(init_pos=[3.0, 0.0, 0.0], yaw=0.0, width=0.05, height=0.25, length=1.0)
+    tg.AddWall(init_pos=[3.0, 1.5, 0.0], yaw=0.0, width=0.08, height=0.20, length=1.0)
+    tg.AddWall(init_pos=[3.0, 3.0, 0.0], yaw=0.0, width=0.10, height=0.15, length=1.0)
+
+    # Floating thin walls (3 types): same dimensions, flat plate hovering at top height
+    tg.AddFloatingWall(init_pos=[4.5, 0.0, 0.0], yaw=0.0, width=0.05, height=0.25, length=1.0)
+    tg.AddFloatingWall(init_pos=[4.5, 1.5, 0.0], yaw=0.0, width=0.08, height=0.20, length=1.0)
+    tg.AddFloatingWall(init_pos=[4.5, 3.0, 0.0], yaw=0.0, width=0.10, height=0.15, length=1.0)
 
     # Rough ground
     tg.AddRoughGround(init_pos=[-2.5, 5.0, 0.0],

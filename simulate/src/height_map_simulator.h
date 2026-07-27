@@ -9,8 +9,10 @@
 
 // Direct terrain height map (Isaac-style), not a LiDAR point-cloud sim.
 //
-// Yaw-aligned 17×11 downward mj_ray onto static ground → full height_scan[187]
-// (no under-body masking; deploy applies that for the policy).
+// Yaw-aligned 29x21 downward mj_ray onto static ground -> full height_scan[609]
+// (no under-body masking; deploy applies that for the policy). Grid is centered on
+// base_link's XY (not the utlidar site's XY, which sits 0.28945m forward of base_link)
+// to match velocity_env_cfg_go2's base-centered RayCaster offset.
 // Publishes rt/height_scan for deploy / debug.
 class HeightMapSimulator
 {
@@ -32,8 +34,12 @@ private:
     mjModel* mj_model_ = nullptr;
     mjData* mj_data_ = nullptr;
     int site_id_ = -1;
+    int base_body_id_ = -1;
     int imu_quat_adr_ = -1;
     bool enabled_ = false;
+    // Grid-center point (base_link XY, utlidar site Z) backing site_pos(); composed fresh
+    // from two separate mjData arrays, so it can't just be a pointer into either one.
+    mutable mjtNum grid_center_[3] = {0.0, 0.0, 0.0};
 
     std::vector<float> height_scan_;
     float imu_yaw_ = 0.0f;

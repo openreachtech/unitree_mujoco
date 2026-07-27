@@ -34,6 +34,13 @@ HeightMapSimulator::HeightMapSimulator(mjModel* model, mjData* data)
         return;
     }
 
+    base_body_id_ = mj_name2id(mj_model_, mjOBJ_BODY, "base_link");
+    if (base_body_id_ < 0)
+    {
+        std::cerr << "HeightMapSimulator: body 'base_link' not found; height map disabled\n";
+        return;
+    }
+
     const int sensor_id = mj_name2id(mj_model_, mjOBJ_SENSOR, "imu_quat");
     if (sensor_id >= 0)
     {
@@ -50,11 +57,18 @@ HeightMapSimulator::HeightMapSimulator(mjModel* model, mjData* data)
 
 const mjtNum* HeightMapSimulator::site_pos() const
 {
-    if (!enabled_ || !mj_data_ || site_id_ < 0)
+    if (!enabled_ || !mj_data_ || site_id_ < 0 || base_body_id_ < 0)
     {
         return nullptr;
     }
-    return mj_data_->site_xpos + 3 * site_id_;
+    // Same base-XY / site-Z composition as compute_height_map(), so debug markers land on
+    // the same grid the policy actually receives.
+    const mjtNum* base = mj_data_->xpos + 3 * base_body_id_;
+    const mjtNum* site = mj_data_->site_xpos + 3 * site_id_;
+    grid_center_[0] = base[0];
+    grid_center_[1] = base[1];
+    grid_center_[2] = site[2];
+    return grid_center_;
 }
 
 void HeightMapSimulator::init_publisher()
@@ -94,7 +108,15 @@ void HeightMapSimulator::update(double sim_time)
 
 void HeightMapSimulator::compute_height_map()
 {
+    // Height reference (z) comes from the utlidar site -- its -0.046825m z-offset from
+    // base_link is exactly what GO2_HEIGHT_SCAN_OFFSET expects. But the grid's XY center
+    // must be base_link's own XY: the utlidar site sits 0.28945m forward of base_link, and
+    // training explicitly re-centers its RayCaster at (0,0) in the base frame (see
+    // velocity_env_cfg_go2.GO2_HEIGHT_SCAN_CENTER_X/Y). Using the site's XY here would
+    // shift every sampled cell ~29cm forward of what the policy was trained on, and would
+    // also throw off deploy's under-body exclusion (computed assuming a base-centered grid).
     const mjtNum* site = mj_data_->site_xpos + 3 * site_id_;
+    const mjtNum* base = mj_data_->xpos + 3 * base_body_id_;
 
     // Isaac ray_alignment="yaw": grid follows heading, rays stay world-vertical.
     float w = 1.0f, x = 0.0f, y = 0.0f, z = 0.0f;
@@ -113,7 +135,7 @@ void HeightMapSimulator::compute_height_map()
     const float half_x = 0.5f * height_scan::kSizeX;
     const float half_y = 0.5f * height_scan::kSizeY;
 
-    // GridPatternCfg: arange(-size/2, size/2 + eps, resolution) → 17×11.
+    // GridPatternCfg: arange(-size/2, size/2 + eps, resolution) → 29×21.
     for (int ix = 0; ix < height_scan::kGridNx; ++ix)
     {
         for (int iy = 0; iy < height_scan::kGridNy; ++iy)
@@ -123,8 +145,8 @@ void HeightMapSimulator::compute_height_map()
             const float y_cell = -half_y + static_cast<float>(iy) * height_scan::kResolution;
 
             const mjtNum origin[3] = {
-                site[0] + cy * x_cell - sy * y_cell,
-                site[1] + sy * x_cell + cy * y_cell,
+                base[0] + cy * x_cell - sy * y_cell,
+                base[1] + sy * x_cell + cy * y_cell,
                 site[2] + kRayStartUp,
             };
             const mjtNum dir[3] = {0.0, 0.0, -1.0};

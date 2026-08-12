@@ -263,10 +263,10 @@
     <motor class="hip" name="RL_thigh" joint="RL_thigh_joint" />
     <motor class="knee" name="RL_calf" joint="RL_calf_joint" />
 
-    <motor ctrlrange="-15 15" name="FR_wheel" joint="FR_wheel_joint" />
-    <motor ctrlrange="-15 15" name="FL_wheel" joint="FL_wheel_joint" />
-    <motor ctrlrange="-15 15" name="RR_wheel" joint="RR_wheel_joint" />
-    <motor ctrlrange="-15 15" name="RL_wheel" joint="RL_wheel_joint" />
+    <motor ctrlrange="-23.7 23.7" name="FR_wheel" joint="FR_wheel_joint" />
+    <motor ctrlrange="-23.7 23.7" name="FL_wheel" joint="FL_wheel_joint" />
+    <motor ctrlrange="-23.7 23.7" name="RR_wheel" joint="RR_wheel_joint" />
+    <motor ctrlrange="-23.7 23.7" name="RL_wheel" joint="RL_wheel_joint" />
   </actuator>
 
   <sensor>

@@ -12,3 +12,34 @@ joystick_bits: 16 # Some game controllers may only have 8-bit accuracy
 print_scene_information: 1 # Print link, joint and sensors information of robot
 
 enable_elastic_band: 0 # Virtual spring band, used for lifting h1
+
+# --- Actuator torque-speed curve ------------------------------------------------
+# MuJoCo's `motor` actuator gives the same peak torque at every joint speed. Real
+# motors cannot: available torque falls off with speed (back-EMF), which is what a
+# no-load speed figure describes. Isaac Lab models this, so a policy trained there
+# relies on the joint braking itself when spun fast -- and without the same curve
+# here, the identical policy gets torque Isaac Lab would have refused, over-rotates,
+# and can tumble. Values below mirror unitree_rl_lab's UnitreeActuatorCfg_Go2HV with
+# the corrected 45.43 N*m knee.
+#
+#   |dq| <= X1        -> Y1 (torque with the motion) / Y2 (torque opposing it)
+#   X1 < |dq| < X2    -> falls linearly to zero
+#   |dq| >= X2        -> zero
+#
+# Set to 0 to restore MuJoCo's plain ctrlrange clamp. Patterns match a substring of
+# the actuator name and are tested in order, so "" must come last.
+enable_torque_speed_curve: 1
+torque_speed_curves:
+  - pattern: "calf"
+    Y1: 39.22
+    Y2: 45.43
+    # Same speed envelope as the other joints: the knee's extra torque is modelled as a
+    # stronger actuator, not as a reduction, so it keeps the motor's own X1/X2. Dividing
+    # these by the torque ratio (6.95 / 15.45) made the knee unusable for jumping.
+    X1: 13.5
+    X2: 30.0
+  - pattern: ""
+    Y1: 20.2
+    Y2: 23.4
+    X1: 13.5
+    X2: 30.0

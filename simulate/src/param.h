@@ -26,6 +26,31 @@ inline struct SimulationConfig
     int enable_elastic_band;
     int band_attached_link = 0;
 
+    // --- torque-speed curve ------------------------------------------------------
+    // MuJoCo's `motor` actuator applies a flat ctrlrange clamp: the same peak torque is
+    // available at any joint speed. Real actuators cannot do that -- back-EMF means
+    // available torque falls off as speed rises, which is why a datasheet quotes a
+    // no-load speed. Isaac Lab models this (UnitreeActuator::_clip_effort), so a policy
+    // trained there learns to work with a joint that brakes itself when spun fast, and
+    // then behaves differently here where nothing brakes it.
+    //
+    // Enabling this makes the bridge apply the same piecewise-linear envelope before
+    // handing the torque to MuJoCo:
+    //
+    //   |dq| <= X1            -> full torque (Y1 if torque and speed agree in sign,
+    //                            Y2 if they oppose -- the braking case allows more)
+    //   X1 < |dq| < X2        -> falls linearly toward zero
+    //   |dq| >= X2            -> zero
+    //
+    // Off by default, so every existing robot/scene behaves exactly as before.
+    struct TorqueSpeedCurve
+    {
+        std::string pattern;  // matched as a substring of the actuator name; "" = catch-all
+        double Y1 = 1e9, Y2 = 1e9, X1 = 1e9, X2 = 1e9;
+    };
+    int enable_torque_speed_curve = 0;
+    std::vector<TorqueSpeedCurve> torque_speed_curves;
+
     void load_from_yaml(const std::string &filename)
     {
         auto cfg = YAML::LoadFile(filename);
@@ -41,6 +66,25 @@ inline struct SimulationConfig
             joystick_bits = cfg["joystick_bits"].as<int>();
             print_scene_information = cfg["print_scene_information"].as<int>();
             enable_elastic_band = cfg["enable_elastic_band"].as<int>();
+
+            // Optional: absent key leaves the curve disabled and behaviour unchanged.
+            if (cfg["enable_torque_speed_curve"])
+            {
+                enable_torque_speed_curve = cfg["enable_torque_speed_curve"].as<int>();
+            }
+            if (cfg["torque_speed_curves"] && cfg["torque_speed_curves"].IsSequence())
+            {
+                for (const auto &entry : cfg["torque_speed_curves"])
+                {
+                    TorqueSpeedCurve c;
+                    c.pattern = entry["pattern"] ? entry["pattern"].as<std::string>() : "";
+                    c.Y1 = entry["Y1"].as<double>();
+                    c.Y2 = entry["Y2"] ? entry["Y2"].as<double>() : c.Y1;
+                    c.X1 = entry["X1"].as<double>();
+                    c.X2 = entry["X2"].as<double>();
+                    torque_speed_curves.push_back(c);
+                }
+            }
         }
         catch(const std::exception& e)
         {

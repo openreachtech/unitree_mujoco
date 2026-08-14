@@ -93,10 +93,63 @@ protected:
 
     std::shared_ptr<unitree::common::UnitreeJoystick> joystick = nullptr;
 
+    // One torque-speed curve per actuator, resolved once from config by name match.
+    // Empty when the feature is off, in which case the clamp below is skipped entirely.
+    std::vector<param::SimulationConfig::TorqueSpeedCurve> motor_curves_;
+
+    void _resolve_torque_speed_curves()
+    {
+        motor_curves_.clear();
+        if (param::config.enable_torque_speed_curve != 1 || param::config.torque_speed_curves.empty())
+        {
+            return;
+        }
+        motor_curves_.resize(num_motor_);
+        for (int i = 0; i < num_motor_; ++i)
+        {
+            const char *name = mj_id2name(mj_model_, mjOBJ_ACTUATOR, i);
+            const std::string actuator_name = name ? name : "";
+            // First matching pattern wins, so list specific patterns before the "" catch-all.
+            for (const auto &c : param::config.torque_speed_curves)
+            {
+                if (c.pattern.empty() || actuator_name.find(c.pattern) != std::string::npos)
+                {
+                    motor_curves_[i] = c;
+                    break;
+                }
+            }
+            std::cout << "[torque-speed] " << actuator_name
+                      << "  Y1=" << motor_curves_[i].Y1 << " Y2=" << motor_curves_[i].Y2
+                      << " X1=" << motor_curves_[i].X1 << " X2=" << motor_curves_[i].X2 << std::endl;
+        }
+    }
+
+    // Mirrors UnitreeActuator::_clip_effort in unitree_rl_lab. Y2 (torque opposing the
+    // motion, i.e. braking) is the larger of the two peaks; the derate slope starts from
+    // whichever peak applies so both reach zero at X2.
+    double _clip_effort(int motor_index, double effort, double joint_vel) const
+    {
+        if (motor_curves_.empty())
+        {
+            return effort;
+        }
+        const auto &c = motor_curves_[motor_index];
+        const bool same_direction = (joint_vel * effort) > 0.0;
+        double max_effort = same_direction ? c.Y1 : c.Y2;
+        const double speed = std::fabs(joint_vel);
+        if (speed >= c.X1)
+        {
+            const double k = -max_effort / (c.X2 - c.X1);
+            max_effort = std::max(0.0, k * (speed - c.X1) + max_effort);
+        }
+        return std::max(-max_effort, std::min(max_effort, effort));
+    }
+
     void _check_sensor()
     {
         num_motor_ = mj_model_->nu;
         dim_motor_sensor_ = MOTOR_SENSOR_NUM * num_motor_;
+        _resolve_torque_speed_curves();
     
         // Find sensor addresses by name
         int sensor_id = -1;
@@ -183,9 +236,12 @@ public:
             std::lock_guard<std::mutex> lock(lowcmd->mutex_);
             for(int i(0); i<num_motor_; i++) {
                 auto & m = lowcmd->msg_.motor_cmd()[i];
-                mj_data_->ctrl[i] = m.tau() +
-                                    m.kp() * (m.q() - mj_data_->sensordata[i]) +
-                                    m.kd() * (m.dq() - mj_data_->sensordata[i + num_motor_]);
+                const double joint_vel = mj_data_->sensordata[i + num_motor_];
+                const double effort = m.tau() +
+                                      m.kp() * (m.q() - mj_data_->sensordata[i]) +
+                                      m.kd() * (m.dq() - joint_vel);
+                // No-op unless enable_torque_speed_curve is set in config.yaml.
+                mj_data_->ctrl[i] = _clip_effort(i, effort, joint_vel);
             }
         }
 

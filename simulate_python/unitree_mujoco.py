@@ -8,6 +8,7 @@ from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 from unitree_sdk2py_bridge import UnitreeSdk2Bridge, ElasticBand
 
 import config
+from mid360_lidar import Mid360Lidar, init_lidar_scene, run_lidar_thread, update_lidar_scene
 
 
 locker = threading.Lock()
@@ -70,14 +71,20 @@ def SimulationThread():
 def PhysicsViewerThread():
     while viewer.is_running():
         locker.acquire()
+        update_lidar_scene(viewer, mid360)
         viewer.sync()
         locker.release()
         time.sleep(config.VIEWER_DT)
 
 
 if __name__ == "__main__":
+    mid360 = Mid360Lidar(mj_model, mj_data, locker)
+    init_lidar_scene(viewer, mid360.num_rays)
+    lidar_thread = Thread(target=run_lidar_thread, args=(mid360, viewer.is_running))
+
     viewer_thread = Thread(target=PhysicsViewerThread)
     sim_thread = Thread(target=SimulationThread)
 
     viewer_thread.start()
     sim_thread.start()
+    lidar_thread.start()

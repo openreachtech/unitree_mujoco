@@ -3,6 +3,12 @@ import numpy as np
 import pygame
 import sys
 import struct
+import os
+
+# Fallback velocity command source when no physical gamepad is attached
+# (headless dev machine): a small script writes "lx ly rx ry" here and it
+# gets packed into wireless_remote the same way a real joystick's axes would.
+SYNTHETIC_JOYSTICK_PATH = "/tmp/go2_synthetic_joystick.txt"
 
 from unitree_sdk2py.core.channel import ChannelSubscriber, ChannelPublisher
 
@@ -214,6 +220,18 @@ class UnitreeSdk2Bridge:
                     -self.joystick.get_axis(self.axis_id["RY"]),
                     -self.joystick.get_axis(self.axis_id["LY"]),
                 ]
+                packs = list(map(lambda x: struct.pack("f", x), sticks))
+                self.low_state.wireless_remote[4:8] = packs[0]
+                self.low_state.wireless_remote[8:12] = packs[1]
+                self.low_state.wireless_remote[12:16] = packs[2]
+                self.low_state.wireless_remote[20:24] = packs[3]
+            elif os.path.exists(SYNTHETIC_JOYSTICK_PATH):
+                try:
+                    with open(SYNTHETIC_JOYSTICK_PATH) as f:
+                        lx, ly, rx, ry = (float(v) for v in f.read().split())
+                except (OSError, ValueError):
+                    lx = ly = rx = ry = 0.0
+                sticks = [lx, rx, -ry, -ly]
                 packs = list(map(lambda x: struct.pack("f", x), sticks))
                 self.low_state.wireless_remote[4:8] = packs[0]
                 self.low_state.wireless_remote[8:12] = packs[1]

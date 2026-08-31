@@ -34,11 +34,13 @@
     <geom pos="0.5 -0.9 0.175" type="box" size="0.15 0.15 0.175" rgba="0.6 0.5 0.2 1"/>
     <geom pos="-0.5 -0.9 0.125" type="box" size="0.15 0.15 0.125" rgba="0.6 0.5 0.2 1"/>
 
-    <!-- Low walls further out (~1.5m), giving some vertical structure at slightly
-         longer range too. -->
-    <geom pos="1.5 0 0.3" type="box" size="0.05 1.2 0.3" rgba="0.5 0.5 0.5 1"/>
-    <geom pos="-1.5 0 0.3" type="box" size="0.05 1.2 0.3" rgba="0.5 0.5 0.5 1"/>
-    <geom pos="0 1.5 0.3" type="box" size="1.2 0.05 0.3" rgba="0.5 0.5 0.5 1"/>
-    <geom pos="0 -1.5 0.3" type="box" size="1.2 0.05 0.3" rgba="0.5 0.5 0.5 1"/>
+    <!-- Taller walls further out (~3m), giving strong vertical structure across a wide
+         range of the MID-360's FOV (not just the near-field boxes above) - degenerate,
+         mostly-planar-floor scans are a known cause of ICP drift, so more/taller vertical
+         surfaces visible at once should give the registration more to lock onto. -->
+    <geom pos="3.0 0 1.0" type="box" size="0.05 3.2 1.0" rgba="0.5 0.5 0.5 1"/>
+    <geom pos="-3.0 0 1.0" type="box" size="0.05 3.2 1.0" rgba="0.5 0.5 0.5 1"/>
+    <geom pos="0 3.0 1.0" type="box" size="3.2 0.05 1.0" rgba="0.5 0.5 0.5 1"/>
+    <geom pos="0 -3.0 1.0" type="box" size="3.2 0.05 1.0" rgba="0.5 0.5 0.5 1"/>
   </worldbody>
 </mujoco>

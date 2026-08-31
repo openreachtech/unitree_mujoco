@@ -8,7 +8,7 @@ from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 from unitree_sdk2py_bridge import UnitreeSdk2Bridge, ElasticBand
 
 import config
-from mid360_lidar import Mid360Lidar, init_lidar_scene, run_lidar_thread, update_lidar_scene
+from mid360_lidar import Mid360Lidar, init_lidar_scene, run_imu_thread, run_lidar_thread, update_lidar_scene
 
 
 locker = threading.Lock()
@@ -69,9 +69,19 @@ def SimulationThread():
 
 
 def PhysicsViewerThread():
+    last_points_version = -1
     while viewer.is_running():
+        # update_lidar_scene only touches mid360.last_world_points (a plain numpy
+        # snapshot from the LiDAR thread), not mj_data, so it doesn't need the physics
+        # locker - looping over 24000 points while holding it was stalling mj_step()
+        # every VIEWER_DT (50Hz), which was a large part of why the sim ran at ~0.3x
+        # realtime. Also skip it entirely when the scan hasn't changed since the last
+        # sync (LIDAR_HZ, e.g. 10Hz, is well below VIEWER_DT's 50Hz).
+        if mid360.points_version != last_points_version:
+            last_points_version = mid360.points_version
+            update_lidar_scene(viewer, mid360)
+
         locker.acquire()
-        update_lidar_scene(viewer, mid360)
         viewer.sync()
         locker.release()
         time.sleep(config.VIEWER_DT)
@@ -81,6 +91,7 @@ if __name__ == "__main__":
     mid360 = Mid360Lidar(mj_model, mj_data, locker)
     init_lidar_scene(viewer, mid360.num_rays)
     lidar_thread = Thread(target=run_lidar_thread, args=(mid360, viewer.is_running))
+    imu_thread = Thread(target=run_imu_thread, args=(mid360, viewer.is_running))
 
     viewer_thread = Thread(target=PhysicsViewerThread)
     sim_thread = Thread(target=SimulationThread)
@@ -88,3 +99,4 @@ if __name__ == "__main__":
     viewer_thread.start()
     sim_thread.start()
     lidar_thread.start()
+    imu_thread.start()

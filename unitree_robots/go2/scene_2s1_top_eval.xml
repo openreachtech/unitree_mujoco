@@ -1,0 +1,42 @@
+<mujoco model="go2 scene (2S1 block tank-top surface, real shipyard design data)">
+  <include file="go2.xml"/>
+
+  <!-- Solver settings from the reference scene (scene_2s1_top.xml), validated there with
+       ball-drop contact tests against this same heightfield's fine (20mm-pixel) detail.
+       Without these the bottom-scene equivalent stalled the sim entirely (/livox/lidar
+       stopped publishing) - carrying the same fix over here proactively. -->
+  <option timestep="0.002" iterations="30" solver="Newton"/>
+  <default><geom solref="0.005 1" friction="0.9 0.02 0.001"/></default>
+
+  <!-- 福岡造船 呉工場 2S1 ブロック タンクトップ上面 (設計DXF実測データ, Tsuruta氏提供).
+       heightfield: 500x800px, 1px=20mm, 高さ 0..0.45m スケール (実データ最大0.190m).
+       基準面 z=0 = タンクトップ板。突出部材の最大高さ0.190m - ちょうど検証済みの
+       0.18m段差の境界にあたる乗り越え課題 (README_hfield.md参照)。
+
+       Original reference scene (scene_2s1_top.xml) placed a Go2-sized marker at local
+       hfield xy (0, -4) as a good flat starting point. go2.xml's base_link spawns at a
+       fixed world (0, 0, 0.445) with no keyframe applied at sim start (go2_ctrl's own
+       FixStand FSM state drives the crouch pose, not MuJoCo's keyframe), so instead of
+       moving the robot, the hfield geom itself is offset by (0, +4) here so that same
+       flat point lands under the robot's fixed spawn location. -->
+  <statistic center="0 0 0.3" extent="1.0"/>
+
+  <visual>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0"/>
+    <rgba haze="0.15 0.25 0.35 1"/>
+    <global azimuth="-130" elevation="-20"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.5 0.6 0.7" rgb2="0.9 0.9 0.95" width="256" height="256"/>
+    <texture name="steel" type="2d" builtin="checker" rgb1="0.45 0.48 0.55" rgb2="0.40 0.43 0.50" width="64" height="64"/>
+    <material name="steel" texture="steel" texrepeat="40 64" specular="0.4" shininess="0.3"/>
+    <hfield name="tanktop" file="../2s1/2s1_top.png" size="5.0 8.0 0.45 0.10"/>
+  </asset>
+
+  <worldbody>
+    <light pos="3 -4 6" dir="-0.35 0.45 -0.85" diffuse="0.9 0.9 0.9"/>
+    <light pos="-4 5 5" diffuse="0.4 0.4 0.45"/>
+    <geom type="hfield" hfield="tanktop" pos="0 4 0" material="steel" friction="0.9 0.02 0.001"/>
+  </worldbody>
+</mujoco>

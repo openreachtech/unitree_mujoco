@@ -1,0 +1,31 @@
+<mujoco model="go2 scene (2S1 block double-bottom interior, real shipyard design data, 80mm/px)">
+  <include file="go2.xml"/>
+
+  <option timestep="0.002" iterations="30" solver="Newton"/>
+  <default><geom solref="0.005 1" friction="0.9 0.02 0.001"/></default>
+
+  <!-- 80mm/px version of scene_2s1_bottom_eval.xml, regenerated from source USD at
+       80mm/px (see scene_2s1_top_80mm_eval.xml for the raycast-cost rationale).
+       Generated via usd2hfield.py --zmax 0.6 (excludes the tank-top deck, clips
+       girders/floors at 0.6m same as the original data). -->
+  <statistic center="0 0 0.3" extent="1.0"/>
+
+  <visual>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0"/>
+    <rgba haze="0.15 0.25 0.35 1"/>
+    <global azimuth="-130" elevation="-20"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.5 0.6 0.7" rgb2="0.9 0.9 0.95" width="256" height="256"/>
+    <texture name="steel" type="2d" builtin="checker" rgb1="0.45 0.48 0.55" rgb2="0.40 0.43 0.50" width="64" height="64"/>
+    <material name="steel" texture="steel" texrepeat="40 64" specular="0.4" shininess="0.3"/>
+    <hfield name="bottom" file="../2s1_80mm/2S1_bottom_80mm.png" size="5.0 8.0 0.60 0.10"/>
+  </asset>
+
+  <worldbody>
+    <light pos="3 -4 6" dir="-0.35 0.45 -0.85" diffuse="0.9 0.9 0.9"/>
+    <light pos="-4 5 5" diffuse="0.4 0.4 0.45"/>
+    <geom type="hfield" hfield="bottom" pos="1.0 2.76 0" material="steel" friction="0.9 0.02 0.001"/>
+  </worldbody>
+</mujoco>

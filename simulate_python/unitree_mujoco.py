@@ -79,7 +79,12 @@ def PhysicsViewerThread():
         # sync (LIDAR_HZ, e.g. 10Hz, is well below VIEWER_DT's 50Hz).
         if mid360.points_version != last_points_version:
             last_points_version = mid360.points_version
-            update_lidar_scene(viewer, mid360)
+            update_lidar_scene(
+                viewer,
+                mid360,
+                show_points=config.ENABLE_LIDAR_POINT_VIZ,
+                show_crop_plane=config.ENABLE_HEIGHTMAP_CROP_VIZ,
+            )
 
         locker.acquire()
         viewer.sync()
@@ -89,7 +94,12 @@ def PhysicsViewerThread():
 
 if __name__ == "__main__":
     mid360 = Mid360Lidar(mj_model, mj_data, locker)
-    init_lidar_scene(viewer, mid360.num_rays)
+    init_lidar_scene(
+        viewer,
+        mid360.num_rays,
+        show_points=config.ENABLE_LIDAR_POINT_VIZ,
+        show_crop_plane=config.ENABLE_HEIGHTMAP_CROP_VIZ,
+    )
     lidar_thread = Thread(target=run_lidar_thread, args=(mid360, viewer.is_running))
     imu_thread = Thread(target=run_imu_thread, args=(mid360, viewer.is_running))
 
@@ -98,5 +108,6 @@ if __name__ == "__main__":
 
     viewer_thread.start()
     sim_thread.start()
-    lidar_thread.start()
+    if config.ENABLE_MID360_LIDAR:
+        lidar_thread.start()
     imu_thread.start()

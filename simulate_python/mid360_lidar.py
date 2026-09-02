@@ -63,10 +63,16 @@ class Mid360Lidar:
         self.locker = locker
 
         self.livox = scan_gen.LivoxGenerator("mid360")
+        # "taichi" builds an LBVH over the scene (hfield cells included) instead of
+        # MuJoCo's own mj_multiRay, which has no such acceleration structure for
+        # heightfields: raycasting the 2S1 shipyard heightfield (fine real-world CAD
+        # data) benchmarked at ~480ms/scan on "cpu" vs ~2ms/scan on "taichi" (Vulkan,
+        # runs on this machine's AMD iGPU - no CUDA/NVIDIA GPU needed). "cpu" was fine
+        # for the earlier box/wall eval scenes; this matters once geometry gets dense.
         self.lidar = MjLidarWrapper(
             mj_model,
             site_name=LIDAR_SITE,
-            backend="cpu",
+            backend="taichi",
             cutoff_dist=30.0,
             args={"bodyexclude": mj_model.body("base_link").id},
         )
@@ -175,14 +181,24 @@ _CROP_PLANES = {
 _CROP_PLANE_NAMES = list(_CROP_PLANES.keys())
 
 
-def init_lidar_scene(viewer, num_rays: int) -> int:
+def init_lidar_scene(viewer, num_rays: int, show_points: bool = True, show_crop_plane: bool = True) -> int:
     """Allocate one sphere per displayed (subsampled) ray, plus one flat plane per entry
     in _CROP_PLANES marking heightmap_generator's crop regions (base_yaw_aligned: origin
     at base_link, X forward per yaw, floor-height). Returns the displayed ray count (the
     planes are extra, starting at index num_displayed).
+
+    show_points=False allocates 0 point spheres (crop plane(s) still drawn) - the point
+    cloud redraw (up to VIEWER_POINT_STRIDE-subsampled, still ~3000 geoms) is a
+    per-frame CPU/GPU cost on top of the viewer's own rendering; turning it off frees
+    that up when it's not needed (e.g. isolating whether it contributes to GPU
+    contention with a concurrent raycast backend like taichi/Vulkan).
+
+    show_crop_plane=False skips allocating the red translucent heightmap-crop-region
+    marker(s) too (0 geoms total when both are False).
     """
-    num_displayed = (num_rays + VIEWER_POINT_STRIDE - 1) // VIEWER_POINT_STRIDE
-    viewer.user_scn.ngeom = num_displayed + len(_CROP_PLANES)
+    num_displayed = (num_rays + VIEWER_POINT_STRIDE - 1) // VIEWER_POINT_STRIDE if show_points else 0
+    num_planes = len(_CROP_PLANES) if show_crop_plane else 0
+    viewer.user_scn.ngeom = num_displayed + num_planes
     for i in range(num_displayed):
         mujoco.mjv_initGeom(
             viewer.user_scn.geoms[i],
@@ -192,16 +208,17 @@ def init_lidar_scene(viewer, num_rays: int) -> int:
             mat=np.eye(3).flatten(),
             rgba=_FIXED_RGBA,
         )
-    for j, name in enumerate(_CROP_PLANE_NAMES):
-        x_min, x_max, y_min, y_max, _z_center, rgba = _CROP_PLANES[name]
-        mujoco.mjv_initGeom(
-            viewer.user_scn.geoms[num_displayed + j],
-            type=mujoco.mjtGeom.mjGEOM_BOX,
-            size=[(x_max - x_min) / 2, (y_max - y_min) / 2, _PLANE_HALF_THICKNESS],
-            pos=[0, 0, 0],
-            mat=np.eye(3).flatten(),
-            rgba=np.array(rgba, dtype=np.float32),
-        )
+    if show_crop_plane:
+        for j, name in enumerate(_CROP_PLANE_NAMES):
+            x_min, x_max, y_min, y_max, _z_center, rgba = _CROP_PLANES[name]
+            mujoco.mjv_initGeom(
+                viewer.user_scn.geoms[num_displayed + j],
+                type=mujoco.mjtGeom.mjGEOM_BOX,
+                size=[(x_max - x_min) / 2, (y_max - y_min) / 2, _PLANE_HALF_THICKNESS],
+                pos=[0, 0, 0],
+                mat=np.eye(3).flatten(),
+                rgba=np.array(rgba, dtype=np.float32),
+            )
     return num_displayed
 
 
@@ -213,17 +230,29 @@ def _yaw_only_rotmat(base_xmat: np.ndarray) -> np.ndarray:
     return np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
 
 
-def update_lidar_scene(viewer, mid360: Mid360Lidar) -> None:
+def update_lidar_scene(
+    viewer, mid360: Mid360Lidar, show_points: bool = True, show_crop_plane: bool = True
+) -> None:
     """Move the (subsampled) scene spheres to the latest MID-360 hit points, and the
     crop planes to the robot's current (yaw-aligned) pose.
 
     No per-frame colormap: a fixed color set once in init_lidar_scene is enough for a
     "does the scan look right" preview, and skips an expensive per-point colormap lookup.
+
+    show_points/show_crop_plane must match whatever was passed to init_lidar_scene - they
+    control how many geoms actually exist in viewer.user_scn, so they must agree or this
+    indexes past the allocated geoms.
     """
-    pts = mid360.last_world_points[::VIEWER_POINT_STRIDE]
     geoms = viewer.user_scn.geoms
-    for i in range(pts.shape[0]):
-        geoms[i].pos[:] = pts[i]
+    num_displayed = 0
+    if show_points:
+        pts = mid360.last_world_points[::VIEWER_POINT_STRIDE]
+        num_displayed = pts.shape[0]
+        for i in range(num_displayed):
+            geoms[i].pos[:] = pts[i]
+
+    if not show_crop_plane:
+        return
 
     base_id = mid360.mj_model.body("base_link").id
     base_pos = mid360.mj_data.xpos[base_id]
@@ -233,7 +262,7 @@ def update_lidar_scene(viewer, mid360: Mid360Lidar) -> None:
     for j, name in enumerate(_CROP_PLANE_NAMES):
         x_min, x_max, y_min, y_max, z_center, _ = _CROP_PLANES[name]
         center_local = np.array([(x_min + x_max) / 2, (y_min + y_max) / 2, z_center])
-        plane_geom = geoms[pts.shape[0] + j]
+        plane_geom = geoms[num_displayed + j]
         plane_geom.pos[:] = base_pos + yaw_mat @ center_local
         plane_geom.mat[:] = yaw_mat  # geom.mat is (3,3) here, unlike mjv_initGeom's flat (9,) arg
 

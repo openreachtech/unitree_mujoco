@@ -79,11 +79,28 @@ class Mid360Lidar:
         self.gyro_id = mj_model.sensor("mid360_imu_gyro").id
         self.acc_id = mj_model.sensor("mid360_imu_acc").id
         self.quat_id = mj_model.sensor("mid360_imu_quat").id
+        self.lidar_site_id = mj_model.site(LIDAR_SITE).id
+
+        # MuJoCo's compiler recenters mesh vertices onto their inertial frame and
+        # records the (pos, quat) of that recentering as mesh_pos/mesh_quat - the raw
+        # STL's own origin (which _FOV_MESH_ROT assumes is the sensor's true center) is
+        # NOT where geom.pos ends up unless this is compensated for. See
+        # update_lidar_scene's FOV block for how these combine with _FOV_MESH_ROT.
+        fov_mesh_id = mj_model.mesh("mid360_fov").id
+        _mesh_quat_mat = np.empty(9)
+        mujoco.mju_quat2Mat(_mesh_quat_mat, mj_model.mesh_quat[fov_mesh_id])
+        self.fov_mesh_rot = _FOV_MESH_ROT @ _mesh_quat_mat.reshape(3, 3)
+        self.fov_mesh_pos_offset = _FOV_MESH_ROT @ mj_model.mesh_pos[fov_mesh_id]
 
         self._sock = None
         self._sock_lock = threading.Lock()
 
         self.num_rays = self.livox.sample_ray_angles()[0].shape[0]
+        # Real MID-360 vertical FOV (read from the actual generated pattern, not
+        # hardcoded, so it tracks any future change to MuJoCo-LiDAR's own scan
+        # definition): used to draw the FOV wireframe (see init_lidar_scene).
+        _fov_phi = self.livox.sample_ray_angles()[1]
+        self.fov_phi_range = (float(_fov_phi.min()), float(_fov_phi.max()))
         self.last_world_points = np.zeros((self.num_rays, 3), dtype=np.float32)
         self.points_version = 0  # bumped in publish_lidar(); lets viewer skip redundant redraws
 
@@ -180,25 +197,45 @@ _CROP_PLANES = {
 }
 _CROP_PLANE_NAMES = list(_CROP_PLANES.keys())
 
+# FOV visualization: Livox's own official mid-360-fov-asm.stp CAD model (see go2.xml's
+# <mesh name="mid360_fov">), drawn as a single translucent mesh geom tracking the live
+# sensor pose. The STL's own frame has the sensor's up-tilted (-7..52deg) axis along CAD
+# +Y (bbox asymmetric: Y in [-96, 750]mm) and the full-360-degree azimuthal spread in the
+# CAD X/Z plane (bbox symmetric: both in [-929, 929]mm) - matches the actual generated
+# ray pattern's (theta, phi) shape (see Mid360Lidar.fov_phi_range) with phi mapped to CAD
+# Y. _FOV_MESH_ROT rotates the mesh 90 degrees about local X so CAD Y lands on the
+# sensor's local Z (its "up"/boresight-tilt axis in the ray-generation convention).
+_FOV_RGBA = np.array([0.1, 0.7, 1.0, 0.35], dtype=np.float32)
+_FOV_MESH_ROT = np.array([[1.0, 0.0, 0.0], [0.0, 0.0, -1.0], [0.0, 1.0, 0.0]])
 
-def init_lidar_scene(viewer, num_rays: int, show_points: bool = True, show_crop_plane: bool = True) -> int:
+
+def init_lidar_scene(
+    viewer,
+    mid360: Mid360Lidar,
+    show_points: bool = True,
+    show_crop_plane: bool = True,
+    show_fov: bool = True,
+) -> int:
     """Allocate one sphere per displayed (subsampled) ray, plus one flat plane per entry
     in _CROP_PLANES marking heightmap_generator's crop regions (base_yaw_aligned: origin
-    at base_link, X forward per yaw, floor-height). Returns the displayed ray count (the
-    planes are extra, starting at index num_displayed).
+    at base_link, X forward per yaw, floor-height), plus (optionally) Livox's own FOV
+    mesh (see go2.xml's "mid360_fov" asset). Returns the displayed ray count (the
+    planes/FOV mesh are extra, starting at index num_displayed).
 
-    show_points=False allocates 0 point spheres (crop plane(s) still drawn) - the point
-    cloud redraw (up to VIEWER_POINT_STRIDE-subsampled, still ~3000 geoms) is a
+    show_points=False allocates 0 point spheres (crop plane(s)/FOV still drawn) - the
+    point cloud redraw (up to VIEWER_POINT_STRIDE-subsampled, still ~3000 geoms) is a
     per-frame CPU/GPU cost on top of the viewer's own rendering; turning it off frees
     that up when it's not needed (e.g. isolating whether it contributes to GPU
     contention with a concurrent raycast backend like taichi/Vulkan).
 
     show_crop_plane=False skips allocating the red translucent heightmap-crop-region
-    marker(s) too (0 geoms total when both are False).
+    marker(s). show_fov=False skips the FOV mesh. (0 geoms total when all three are
+    False.)
     """
-    num_displayed = (num_rays + VIEWER_POINT_STRIDE - 1) // VIEWER_POINT_STRIDE if show_points else 0
+    num_displayed = (mid360.num_rays + VIEWER_POINT_STRIDE - 1) // VIEWER_POINT_STRIDE if show_points else 0
     num_planes = len(_CROP_PLANES) if show_crop_plane else 0
-    viewer.user_scn.ngeom = num_displayed + num_planes
+    num_fov = 1 if show_fov else 0
+    viewer.user_scn.ngeom = num_displayed + num_planes + num_fov
     for i in range(num_displayed):
         mujoco.mjv_initGeom(
             viewer.user_scn.geoms[i],
@@ -219,6 +256,18 @@ def init_lidar_scene(viewer, num_rays: int, show_points: bool = True, show_crop_
                 mat=np.eye(3).flatten(),
                 rgba=np.array(rgba, dtype=np.float32),
             )
+    if show_fov:
+        fov_start = num_displayed + num_planes
+        fov_geom = viewer.user_scn.geoms[fov_start]
+        mujoco.mjv_initGeom(
+            fov_geom,
+            type=mujoco.mjtGeom.mjGEOM_MESH,
+            size=[0, 0, 0],
+            pos=[0, 0, 0],
+            mat=np.eye(3).flatten(),
+            rgba=_FOV_RGBA,
+        )
+        fov_geom.dataid = mid360.mj_model.mesh("mid360_fov").id
     return num_displayed
 
 
@@ -231,17 +280,22 @@ def _yaw_only_rotmat(base_xmat: np.ndarray) -> np.ndarray:
 
 
 def update_lidar_scene(
-    viewer, mid360: Mid360Lidar, show_points: bool = True, show_crop_plane: bool = True
+    viewer,
+    mid360: Mid360Lidar,
+    show_points: bool = True,
+    show_crop_plane: bool = True,
+    show_fov: bool = True,
 ) -> None:
-    """Move the (subsampled) scene spheres to the latest MID-360 hit points, and the
-    crop planes to the robot's current (yaw-aligned) pose.
+    """Move the (subsampled) scene spheres to the latest MID-360 hit points, the crop
+    planes to the robot's current (yaw-aligned) pose, and the FOV mesh to the sensor's
+    current pose.
 
     No per-frame colormap: a fixed color set once in init_lidar_scene is enough for a
     "does the scan look right" preview, and skips an expensive per-point colormap lookup.
 
-    show_points/show_crop_plane must match whatever was passed to init_lidar_scene - they
-    control how many geoms actually exist in viewer.user_scn, so they must agree or this
-    indexes past the allocated geoms.
+    show_points/show_crop_plane/show_fov must match whatever was passed to
+    init_lidar_scene - they control how many geoms actually exist in viewer.user_scn, so
+    they must agree or this indexes past the allocated geoms.
     """
     geoms = viewer.user_scn.geoms
     num_displayed = 0
@@ -251,20 +305,26 @@ def update_lidar_scene(
         for i in range(num_displayed):
             geoms[i].pos[:] = pts[i]
 
-    if not show_crop_plane:
-        return
+    if show_crop_plane:
+        base_id = mid360.mj_model.body("base_link").id
+        base_pos = mid360.mj_data.xpos[base_id]
+        base_mat = mid360.mj_data.xmat[base_id].reshape(3, 3)
+        yaw_mat = _yaw_only_rotmat(base_mat)
 
-    base_id = mid360.mj_model.body("base_link").id
-    base_pos = mid360.mj_data.xpos[base_id]
-    base_mat = mid360.mj_data.xmat[base_id].reshape(3, 3)
-    yaw_mat = _yaw_only_rotmat(base_mat)
+        for j, name in enumerate(_CROP_PLANE_NAMES):
+            x_min, x_max, y_min, y_max, z_center, _ = _CROP_PLANES[name]
+            center_local = np.array([(x_min + x_max) / 2, (y_min + y_max) / 2, z_center])
+            plane_geom = geoms[num_displayed + j]
+            plane_geom.pos[:] = base_pos + yaw_mat @ center_local
+            plane_geom.mat[:] = yaw_mat  # geom.mat is (3,3) here, unlike mjv_initGeom's flat (9,) arg
 
-    for j, name in enumerate(_CROP_PLANE_NAMES):
-        x_min, x_max, y_min, y_max, z_center, _ = _CROP_PLANES[name]
-        center_local = np.array([(x_min + x_max) / 2, (y_min + y_max) / 2, z_center])
-        plane_geom = geoms[num_displayed + j]
-        plane_geom.pos[:] = base_pos + yaw_mat @ center_local
-        plane_geom.mat[:] = yaw_mat  # geom.mat is (3,3) here, unlike mjv_initGeom's flat (9,) arg
+    if show_fov:
+        num_planes = len(_CROP_PLANES) if show_crop_plane else 0
+        fov_geom = geoms[num_displayed + num_planes]
+        site_pos = mid360.mj_data.site_xpos[mid360.lidar_site_id]
+        site_mat = mid360.mj_data.site_xmat[mid360.lidar_site_id].reshape(3, 3)
+        fov_geom.pos[:] = site_pos + site_mat @ mid360.fov_mesh_pos_offset
+        fov_geom.mat[:] = site_mat @ mid360.fov_mesh_rot
 
 
 def run_lidar_thread(mid360: Mid360Lidar, is_running) -> None:

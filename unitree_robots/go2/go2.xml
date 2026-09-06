@@ -42,6 +42,14 @@
     <material name="white" rgba="1 1 1 1" />
     <material name="gray" rgba="0.671705 0.692426 0.774270 1" />
 
+    <!-- Livox's own official mid-360-fov-asm.stp CAD model (converted to STL, decimated
+         to ~32k tris - the raw export was 1M+ tris, far more detail than a translucent
+         visual overlay needs). Registered as an asset only (no static body geom here);
+         mid360_lidar.py's update_lidar_scene draws it as a runtime user_scn mesh geom
+         tracking the live sensor pose, toggled by config.ENABLE_LIDAR_FOV_VIZ, the same
+         way the wireframe FOV spokes it replaces were. STL units are mm. -->
+    <mesh name="mid360_fov" file="mid360_fov.stl" scale="0.001 0.001 0.001" />
+
     <mesh file="base_0.obj" />
     <mesh file="base_1.obj" />
     <mesh file="base_2.obj" />

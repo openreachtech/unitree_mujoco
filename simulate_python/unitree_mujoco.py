@@ -84,6 +84,7 @@ def PhysicsViewerThread():
                 mid360,
                 show_points=config.ENABLE_LIDAR_POINT_VIZ,
                 show_crop_plane=config.ENABLE_HEIGHTMAP_CROP_VIZ,
+                show_fov=config.ENABLE_LIDAR_FOV_VIZ,
             )
 
         locker.acquire()
@@ -96,9 +97,10 @@ if __name__ == "__main__":
     mid360 = Mid360Lidar(mj_model, mj_data, locker)
     init_lidar_scene(
         viewer,
-        mid360.num_rays,
+        mid360,
         show_points=config.ENABLE_LIDAR_POINT_VIZ,
         show_crop_plane=config.ENABLE_HEIGHTMAP_CROP_VIZ,
+        show_fov=config.ENABLE_LIDAR_FOV_VIZ,
     )
     lidar_thread = Thread(target=run_lidar_thread, args=(mid360, viewer.is_running))
     imu_thread = Thread(target=run_imu_thread, args=(mid360, viewer.is_running))

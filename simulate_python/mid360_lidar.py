@@ -28,7 +28,6 @@ import os
 import socket
 import struct
 import sys
-import threading
 import time
 
 import mujoco
@@ -45,10 +44,51 @@ if not os.path.isdir(_MUJOCO_LIDAR_SRC):
         "to its src/ directory."
     )
 sys.path.insert(0, _MUJOCO_LIDAR_SRC)
+
+import taichi as ti  # noqa: E402
+
+# The actual raycast now runs on the "warp" backend (see MjLidarWrapper below),
+# not taichi - warp's CUDA kernels can be launched from any thread. taichi is
+# still used by LivoxGenerator (scan_gen_livox_ti.py) for the scan pattern
+# angle generation, called every frame from run_lidar_thread (a background
+# Thread). Force vulkan instead of letting taichi pick cuda there too: taichi's
+# CUDA backend keeps its context tied to whichever thread called ti.init() (the
+# main thread here), so calling in from another thread fails with
+# "CUDA_ERROR_INVALID_CONTEXT ... cuMemAllocAsync". Vulkan has no such
+# restriction and runs on both NVIDIA and AMD GPUs.
+#
+# LivoxGenerator.__init__ and MjLidarWrapper._init_taichi_backend both guard
+# their own ti.init(arch=ti.gpu) call behind `not ti._is_initialized`, meaning
+# to skip re-initializing (which would silently switch back to cuda) - but
+# taichi 1.7.4 no longer sets that attribute at all, so the guard is dead code
+# and both call ti.init(arch=ti.gpu) unconditionally, undoing our vulkan choice
+# right after we set it. Patch ti.init itself so only the first call (this one)
+# takes effect and every later call becomes a no-op.
+_ti_init_done = False
+_real_ti_init = ti.init
+
+
+def _ti_init_once(*args, **kwargs):
+    global _ti_init_done
+    if _ti_init_done:
+        return None
+    _ti_init_done = True
+    return _real_ti_init(*args, **kwargs)
+
+
+ti.init = _ti_init_once
+ti.init(arch=ti.vulkan)
+
 from mujoco_lidar import MjLidarWrapper, scan_gen  # noqa: E402
 
 BRIDGE_HOST = "127.0.0.1"
-BRIDGE_PORT = 8360
+# LiDAR and IMU each get their own TCP connection to mid360_tcp_to_ros2.py - see
+# that file's module docstring for why: sharing one connection let a large
+# LiDAR frame's recv()+parse+publish head-of-line-block the much smaller,
+# much more frequent IMU frames queued behind it, capping observed IMU
+# throughput at well under its real 200Hz.
+BRIDGE_PORT_LIDAR = 8360
+BRIDGE_PORT_IMU = 8361
 LIDAR_HZ = 10.0
 IMU_HZ = 200.0  # matches the real MID-360's IMU output rate
 LIDAR_SITE = "livox_mid360"
@@ -72,9 +112,21 @@ class Mid360Lidar:
         self.lidar = MjLidarWrapper(
             mj_model,
             site_name=LIDAR_SITE,
-            backend="taichi",
+            backend="warp",
             cutoff_dist=30.0,
-            args={"bodyexclude": mj_model.body("base_link").id},
+            args={"bodyexclude": mj_model.body("base_link").id, "device": "cuda:0"},
+        )
+        # taichi's LLVM-backed archs (cpu/cuda) only JIT-compile a kernel's first
+        # invocation from the thread that owns the taichi runtime (asserts
+        # std::this_thread::get_id() == main_thread_id_ otherwise). trace_rays() is
+        # normally first called from run_lidar_thread (a background Thread), so
+        # force that one-time compile here on the main thread instead, before any
+        # threads are started (mirrors MuJoCo-LiDAR's own examples/example_mjcf.py).
+        _warmup_theta, _warmup_phi = self.livox.sample_ray_angles()
+        self.lidar.trace_rays(
+            mj_data,
+            np.ascontiguousarray(_warmup_theta, dtype=np.float32),
+            np.ascontiguousarray(_warmup_phi, dtype=np.float32),
         )
         self.gyro_id = mj_model.sensor("mid360_imu_gyro").id
         self.acc_id = mj_model.sensor("mid360_imu_acc").id
@@ -92,8 +144,12 @@ class Mid360Lidar:
         self.fov_mesh_rot = _FOV_MESH_ROT @ _mesh_quat_mat.reshape(3, 3)
         self.fov_mesh_pos_offset = _FOV_MESH_ROT @ mj_model.mesh_pos[fov_mesh_id]
 
-        self._sock = None
-        self._sock_lock = threading.Lock()
+        # Separate sockets, each touched only by its own dedicated thread
+        # (publish_lidar from run_lidar_thread, publish_imu from
+        # run_imu_thread) - no cross-thread access to either, so no lock
+        # needed for either one individually.
+        self._lidar_sock = None
+        self._imu_sock = None
 
         self.num_rays = self.livox.sample_ray_angles()[0].shape[0]
         # Real MID-360 vertical FOV (read from the actual generated pattern, not
@@ -109,29 +165,42 @@ class Mid360Lidar:
         dim = self.mj_model.sensor_dim[sensor_id]
         return self.mj_data.sensordata[adr : adr + dim]
 
-    def _ensure_connected(self):
-        if self._sock is not None:
-            return True
+    @staticmethod
+    def _connect(port: int):
         try:
-            s = socket.create_connection((BRIDGE_HOST, BRIDGE_PORT), timeout=0.2)
+            s = socket.create_connection((BRIDGE_HOST, port), timeout=0.2)
             s.settimeout(None)
-            self._sock = s
-            return True
+            return s
         except OSError:
-            return False
+            return None
 
-    def _send(self, msg_type: bytes, payload: bytes) -> None:
-        with self._sock_lock:
-            if not self._ensure_connected():
+    def _send_lidar(self, payload: bytes) -> None:
+        if self._lidar_sock is None:
+            self._lidar_sock = self._connect(BRIDGE_PORT_LIDAR)
+            if self._lidar_sock is None:
                 return
+        try:
+            self._lidar_sock.sendall(payload)
+        except OSError:
             try:
-                self._sock.sendall(msg_type + struct.pack(">I", len(payload)) + payload)
+                self._lidar_sock.close()
             except OSError:
-                try:
-                    self._sock.close()
-                except OSError:
-                    pass
-                self._sock = None
+                pass
+            self._lidar_sock = None
+
+    def _send_imu(self, payload: bytes) -> None:
+        if self._imu_sock is None:
+            self._imu_sock = self._connect(BRIDGE_PORT_IMU)
+            if self._imu_sock is None:
+                return
+        try:
+            self._imu_sock.sendall(payload)
+        except OSError:
+            try:
+                self._imu_sock.close()
+            except OSError:
+                pass
+            self._imu_sock = None
 
     def publish_lidar(self) -> None:
         # Pure computation, no mj_data dependency - do it before taking the physics
@@ -155,17 +224,22 @@ class Mid360Lidar:
         xyzi[:, :3] = xyz
         xyzi[:, 3] = 1.0
         header = struct.pack("<dI", stamp, xyzi.shape[0])
-        self._send(b"L", header + xyzi.tobytes())
+        self._send_lidar(b"L" + struct.pack(">I", 12 + xyzi.nbytes) + header + xyzi.tobytes())
 
     def publish_imu(self) -> None:
-        self.locker.acquire()
-        try:
-            gyro = np.array(self._sensor_slice(self.gyro_id), dtype=np.float32)
-            acc = np.array(self._sensor_slice(self.acc_id), dtype=np.float32)
-            quat = np.array(self._sensor_slice(self.quat_id), dtype=np.float32)  # w x y z
-            stamp = self.mj_data.time
-        finally:
-            self.locker.release()
+        # Deliberately lock-free: SimulationThread (mj_step, every 5ms),
+        # publish_lidar() (holds self.locker for the whole raycast) and
+        # PhysicsViewerThread (viewer.sync()) all contend for the same
+        # self.locker, and IMU_HZ=200 needs a 5ms cadence - finer than any of
+        # theirs - so it was the thread most easily starved by that
+        # contention (observed capped around ~90Hz instead of 200Hz). A torn
+        # read here (a value updated mid-copy by a concurrent mj_step) means
+        # at worst one stale/mixed sample every so often, an acceptable
+        # trade for actually sustaining 200Hz.
+        gyro = np.array(self._sensor_slice(self.gyro_id), dtype=np.float32)
+        acc = np.array(self._sensor_slice(self.acc_id), dtype=np.float32)
+        quat = np.array(self._sensor_slice(self.quat_id), dtype=np.float32)  # w x y z
+        stamp = self.mj_data.time
 
         payload = struct.pack(
             "<d10f",
@@ -174,7 +248,7 @@ class Mid360Lidar:
             gyro[0], gyro[1], gyro[2],
             acc[0], acc[1], acc[2],
         )
-        self._send(b"I", payload)
+        self._send_imu(b"I" + struct.pack(">I", len(payload)) + payload)
 
 
 # Only a subsample of rays gets a sphere in the MuJoCo viewer: looping over all 24000 in

@@ -16,8 +16,18 @@ the simulation (TF interpolation, LIO time-synchronization, rosbag replay speed,
 should be launched with use_sim_time:=true so it picks up /clock instead of wall time.
 This node itself must NOT set use_sim_time - it is the /clock source, not a consumer.
 
+LiDAR and IMU each get their OWN TCP connection (PORT_LIDAR / PORT_IMU), each read by
+its own dedicated thread here. They used to share a single connection/read loop: a
+24000-point LiDAR frame (~384KB) takes measurably long to recv()+parse+publish as a
+PointCloud2, and while that was happening the much smaller, much more frequent IMU
+frames queued up behind it on the same TCP stream couldn't be read at all (classic
+head-of-line blocking). That capped observed /livox/imu throughput at under 100Hz
+instead of the real MID-360's 200Hz, even though mid360_lidar.py's IMU thread was
+generating samples at close to the correct rate the whole time - separating the streams
+let each side run at its own pace.
+
 Run with:
-    source /opt/ros/lyrical/setup.bash
+    source /opt/ros/humble/setup.bash
     source mid360_ros2_bridge/.venv/bin/activate
     python mid360_ros2_bridge/mid360_tcp_to_ros2.py
 """
@@ -34,7 +44,8 @@ from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import Imu, PointCloud2, PointField
 
 HOST = "127.0.0.1"
-PORT = 8360
+PORT_LIDAR = 8360
+PORT_IMU = 8361
 FRAME_ID = "livox_frame"
 
 
@@ -54,46 +65,60 @@ class Mid360TcpBridge(Node):
         self.cloud_pub = self.create_publisher(PointCloud2, "/livox/lidar", 1)
         self.imu_pub = self.create_publisher(Imu, "/livox/imu", 10)
         self.clock_pub = self.create_publisher(Clock, "/clock", 10)
-        self._last_sim_time = 0.0  # highest sim_time seen from EITHER stream, for /clock only
+        # Highest sim_time seen from EITHER stream, for /clock only (see
+        # _stamp_from_sim_time). Written from both the lidar and imu accept
+        # threads, so guarded by its own lock.
+        self._last_sim_time = 0.0
+        self._clock_lock = threading.Lock()
 
-        self._server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self._server.bind((HOST, PORT))
-        self._server.listen(1)
-        self.get_logger().info(f"Listening for sim on {HOST}:{PORT}")
+        self._lidar_thread = self._start_listener(
+            "lidar", PORT_LIDAR, self._lidar_read_loop
+        )
+        self._imu_thread = self._start_listener("imu", PORT_IMU, self._imu_read_loop)
 
-        self._accept_thread = threading.Thread(target=self._accept_loop, daemon=True)
-        self._accept_thread.start()
+    def _start_listener(self, name: str, port: int, read_loop) -> threading.Thread:
+        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server.bind((HOST, port))
+        server.listen(1)
+        self.get_logger().info(f"Listening for sim {name} on {HOST}:{port}")
 
-    def _accept_loop(self) -> None:
-        while rclpy.ok():
-            conn, addr = self._server.accept()
-            self.get_logger().info(f"sim connected from {addr}")
-            # A new sim connection means unitree_mujoco.py restarted, so mj_data.time
-            # reset to ~0 (mj_resetDataKeyframe). Without resetting this too, the old
-            # high-water mark would never let a new, lower sim_time through the
-            # monotonic clamp below - every stamp would freeze at whatever value this
-            # was left at by the previous sim run, forever, even though the new run's
-            # messages keep arriving. (This produced a very confusing "mj_data.time is
-            # frozen" symptom that had nothing to do with the sim itself.)
-            self._last_sim_time = 0.0
-            try:
-                self._read_loop(conn)
-            except (ConnectionError, OSError) as exc:
-                self.get_logger().warning(f"sim connection lost: {exc}")
-            finally:
-                conn.close()
+        def accept_loop() -> None:
+            while rclpy.ok():
+                conn, addr = server.accept()
+                self.get_logger().info(f"sim {name} connected from {addr}")
+                # A new sim connection means unitree_mujoco.py (re)started, so
+                # mj_data.time reset to ~0 (mj_resetDataKeyframe). Without
+                # resetting this too, the old high-water mark would never let
+                # a new, lower sim_time through the monotonic clamp below -
+                # every /clock stamp would freeze at whatever value this was
+                # left at by the previous sim run. Both the lidar and imu
+                # connections reconnect together on a sim restart, so either
+                # one arriving resets it for both.
+                with self._clock_lock:
+                    self._last_sim_time = 0.0
+                try:
+                    read_loop(conn)
+                except (ConnectionError, OSError) as exc:
+                    self.get_logger().warning(f"sim {name} connection lost: {exc}")
+                finally:
+                    conn.close()
 
-    def _read_loop(self, conn: socket.socket) -> None:
+        thread = threading.Thread(target=accept_loop, daemon=True)
+        thread.start()
+        return thread
+
+    def _lidar_read_loop(self, conn: socket.socket) -> None:
         while rclpy.ok():
             header = recv_exact(conn, 5)
-            msg_type = header[0:1]
             (length,) = struct.unpack(">I", header[1:5])
-            payload = recv_exact(conn, length)
-            if msg_type == b"L":
-                self._publish_lidar(payload)
-            elif msg_type == b"I":
-                self._publish_imu(payload)
+            self._publish_lidar(recv_exact(conn, length))
+
+    def _imu_read_loop(self, conn: socket.socket) -> None:
+        while rclpy.ok():
+            header = recv_exact(conn, 5)
+            (length,) = struct.unpack(">I", header[1:5])
+            self._publish_imu(recv_exact(conn, length))
 
     def _publish_lidar(self, payload: bytes) -> None:
         stamp, num_points = struct.unpack_from("<dI", payload, 0)
@@ -155,9 +180,10 @@ class Mid360TcpBridge(Node):
         sec = int(sim_time)
         nanosec = int(round((sim_time - sec) * 1e9))
         stamp = Time(sec=sec, nanosec=nanosec)
-        if sim_time > self._last_sim_time:
-            self._last_sim_time = sim_time
-            self.clock_pub.publish(Clock(clock=Time(sec=sec, nanosec=nanosec)))
+        with self._clock_lock:
+            if sim_time > self._last_sim_time:
+                self._last_sim_time = sim_time
+                self.clock_pub.publish(Clock(clock=Time(sec=sec, nanosec=nanosec)))
         return stamp
 
 

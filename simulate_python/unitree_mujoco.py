@@ -1,3 +1,4 @@
+import sys
 import time
 import mujoco
 import mujoco.viewer
@@ -10,6 +11,13 @@ from unitree_sdk2py_bridge import UnitreeSdk2Bridge, ElasticBand
 import config
 from mid360_lidar import Mid360Lidar, init_lidar_scene, run_imu_thread, run_lidar_thread, update_lidar_scene
 
+# CPython's default GIL switch interval (5ms) is right at IMU_HZ=200's own
+# 5ms sampling period, so under any thread contention (sim/viewer/lidar
+# threads all competing) the IMU thread doesn't get scheduled often enough to
+# actually hit every 5ms slot. Shortening the interval lets the interpreter
+# hand off the GIL between threads much more often, which is what real 200Hz
+# sampling from a background Python thread needs.
+sys.setswitchinterval(0.0005)
 
 locker = threading.Lock()
 
@@ -66,6 +74,17 @@ def SimulationThread():
         )
         if time_until_next_step > 0:
             time.sleep(time_until_next_step)
+        else:
+            # mj_step() is taking longer than SIMULATE_DT, i.e. this sim is running
+            # below realtime - back-to-back mj_step() calls with no sleep at all
+            # starve the other threads (imu/lidar/viewer) of any chance to run: a
+            # single Python C-extension call like mj_step() only yields the GIL at
+            # its own internal check points, so a tight loop of them dominates
+            # scheduling. A zero-duration sleep still forces a GIL release/thread
+            # switch opportunity between iterations, which is enough to let e.g.
+            # run_imu_thread's 200Hz polling loop actually get scheduled instead of
+            # having several of its 5ms sim-time windows coalesced into one call.
+            time.sleep(0)
 
 
 def PhysicsViewerThread():

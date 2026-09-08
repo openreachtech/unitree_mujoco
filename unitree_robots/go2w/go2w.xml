@@ -30,7 +30,7 @@
         <geom group="3" />
         <default class="foot">
           <geom size="0.022" pos="-0.002 0 -0.2264" priority="1" condim="6"
-            friction="0.8 0.02 0.01" />
+            friction="1.0 0.02 0.01" />
         </default>
       </default>
     </default>
@@ -76,6 +76,15 @@
       <geom size="0.05 0.045" pos="0.285 0 0.01" type="cylinder" class="collision" />
       <geom size="0.047" pos="0.293 0 -0.06" class="collision" />
       <site name="imu" pos="-0.02557 0 0.04232" />
+      <!-- Go2W has no LiDAR. This site exists only because HeightMapSimulator
+           requires a site named "utlidar" (it disables itself otherwise) and reads
+           its z as the height-scan reference; the grid's XY centre comes from
+           base_link, so this site's xy is unused. Placed at the base_link origin so
+           the published value is exactly site_z - hit_z - kOffset with the shared
+           kOffset = 0.273175 -- the Isaac Lab side (Go2w Try49) uses that same
+           offset on mdp.height_scan, so no per-robot constant is needed on either
+           side. -->
+      <site name="utlidar" pos="0 0 0" size="0.015" rgba="1 0.2 0.2 0.6" />
       <body name="FL_hip" pos="0.1934 0.0465 0">
         <inertial pos="-0.0054 0.00194 -0.000105" quat="0.497014 0.499245 0.505462 0.498237"
           mass="0.678"
@@ -263,10 +272,10 @@
     <motor class="hip" name="RL_thigh" joint="RL_thigh_joint" />
     <motor class="knee" name="RL_calf" joint="RL_calf_joint" />
 
-    <motor ctrlrange="-15 15" name="FR_wheel" joint="FR_wheel_joint" />
-    <motor ctrlrange="-15 15" name="FL_wheel" joint="FL_wheel_joint" />
-    <motor ctrlrange="-15 15" name="RR_wheel" joint="RR_wheel_joint" />
-    <motor ctrlrange="-15 15" name="RL_wheel" joint="RL_wheel_joint" />
+    <motor ctrlrange="-23.7 23.7" name="FR_wheel" joint="FR_wheel_joint" />
+    <motor ctrlrange="-23.7 23.7" name="FL_wheel" joint="FL_wheel_joint" />
+    <motor ctrlrange="-23.7 23.7" name="RR_wheel" joint="RR_wheel_joint" />
+    <motor ctrlrange="-23.7 23.7" name="RL_wheel" joint="RL_wheel_joint" />
   </actuator>
 
   <sensor>

@@ -20,21 +20,29 @@ ROBOT = "go2w"
 INPUT_SCENE_PATH = "../unitree_robots/go2w/scene.xml"
 OUTPUT_SCENE_PATH = "../unitree_robots/go2w/scene_terrain.xml"
 
-# (x, thickness) -- thickness varies along x within a lane.
-THICKNESS_LANES = ((-3.0, 0.30), (-4.5, 0.10))
+# (x, thickness) -- thickness varies along x within a lane. 0.10 m was judged too
+# challenging (both raised by 0.20 m: 0.10 -> 0.30, 0.30 -> 0.50).
+THICKNESS_LANES = ((-3.0, 0.50), (-4.5, 0.30))
 # One y lane per height, so a lane is a single difficulty.
-HEIGHTS = (0.50, 0.60, 0.70)
-LANE_SPACING = 1.5
-WALL_LENGTH = 1.0
+HEIGHTS = (0.40, 0.50, 0.60)
+# LANE_SPACING == WALL_LENGTH -- adjacent lanes are flush along y (no flat-ground margin
+# between height groups). If WALL_LENGTH changes, change this to match.
+WALL_LENGTH = 2.0
+LANE_SPACING = WALL_LENGTH
 
 
 def add_walls(tg):
     """Six walls in a 3 x 2 grid: height along y, thickness along x.
 
-    Driving a lane head-on means crossing the 0.30 m wall first and the 0.10 m one 1.5 m
+    Driving a lane head-on means crossing the 0.50 m wall first and the 0.30 m one 1.5 m
     later at the same height. That spacing leaves roughly 1.3 m of clear ground between
     their faces -- about two Go2W body lengths -- so the robot can settle before the
     second one.
+
+    Lanes are laid out back-to-back along y (LANE_SPACING == WALL_LENGTH), so there is no
+    flat-ground gap between the 0.20/0.40/0.60 m height groups -- a robot driving parallel
+    to the walls (rather than straight at one) crosses directly from one height to the
+    next.
 
     No AddFloatingWall: the wheeled base is meant to climb onto and over a wall, so a
     hovering plate with no supporting wall underneath is not a case worth testing here.

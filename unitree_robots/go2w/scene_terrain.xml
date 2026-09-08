@@ -28,5 +28,5 @@
     <geom pos="3 0 0.02" type="box" size="0.24 2 0.6" quat="1.0 0 0 0" />
     <geom pos="3.2 0 0.02" type="box" size="0.25 2 0.75" quat="1.0 0 0 0" />
     <geom pos="3.4 0 0.02" type="box" size="0.26 2 0.9" quat="1.0 0 0 0" />
-  <geom pos="-3.0 0.0 0.25" type="box" size="0.15 0.5 0.25" quat="1.0 0.0 0.0 0.0" /><geom pos="-4.5 0.0 0.25" type="box" size="0.05 0.5 0.25" quat="1.0 0.0 0.0 0.0" /><geom pos="-3.0 1.5 0.3" type="box" size="0.15 0.5 0.3" quat="1.0 0.0 0.0 0.0" /><geom pos="-4.5 1.5 0.3" type="box" size="0.05 0.5 0.3" quat="1.0 0.0 0.0 0.0" /><geom pos="-3.0 3.0 0.35" type="box" size="0.15 0.5 0.35" quat="1.0 0.0 0.0 0.0" /><geom pos="-4.5 3.0 0.35" type="box" size="0.05 0.5 0.35" quat="1.0 0.0 0.0 0.0" /></worldbody>
+  <geom pos="-3.0 0.0 0.2" type="box" size="0.25 1.0 0.2" quat="1.0 0.0 0.0 0.0" /><geom pos="-4.5 0.0 0.2" type="box" size="0.15 1.0 0.2" quat="1.0 0.0 0.0 0.0" /><geom pos="-3.0 2.0 0.25" type="box" size="0.25 1.0 0.25" quat="1.0 0.0 0.0 0.0" /><geom pos="-4.5 2.0 0.25" type="box" size="0.15 1.0 0.25" quat="1.0 0.0 0.0 0.0" /><geom pos="-3.0 4.0 0.3" type="box" size="0.25 1.0 0.3" quat="1.0 0.0 0.0 0.0" /><geom pos="-4.5 4.0 0.3" type="box" size="0.15 1.0 0.3" quat="1.0 0.0 0.0 0.0" /></worldbody>
 </mujoco>

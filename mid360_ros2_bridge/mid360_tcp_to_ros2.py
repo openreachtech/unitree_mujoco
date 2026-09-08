@@ -10,6 +10,11 @@ them as:
   /clock        rosgraph_msgs/msg/Clock, driven by MuJoCo's mj_data.time (the sim time
                 already carried in each TCP frame's payload, previously unused - message
                 headers were wall-clock stamped instead)
+  tf odom -> base_link, from MuJoCo's own ground-truth base_link pose (PORT_POSE) - a
+                drop-in replacement for rko_lio's odom->base_link when its LIO estimate
+                either isn't needed or, per online_imu_rate_node's lack of any recovery
+                path from a "LiDAR scan delta exceeds 1 second" InputError, isn't
+                reliably available at all. See run_pose_thread in mid360_lidar.py.
 
 Any other node in the graph that wants to reason about message timing consistently with
 the simulation (TF interpolation, LIO time-synchronization, rosbag replay speed, etc.)
@@ -39,14 +44,19 @@ import threading
 import numpy as np
 import rclpy
 from builtin_interfaces.msg import Time
+from geometry_msgs.msg import TransformStamped
 from rclpy.node import Node
 from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import Imu, PointCloud2, PointField
+from tf2_ros import TransformBroadcaster
 
 HOST = "127.0.0.1"
 PORT_LIDAR = 8360
 PORT_IMU = 8361
+PORT_POSE = 8362
 FRAME_ID = "livox_frame"
+ODOM_FRAME_ID = "odom"
+BASE_FRAME_ID = "base_link"
 
 
 def recv_exact(conn: socket.socket, n: int) -> bytes:
@@ -65,8 +75,9 @@ class Mid360TcpBridge(Node):
         self.cloud_pub = self.create_publisher(PointCloud2, "/livox/lidar", 1)
         self.imu_pub = self.create_publisher(Imu, "/livox/imu", 10)
         self.clock_pub = self.create_publisher(Clock, "/clock", 10)
+        self.tf_broadcaster = TransformBroadcaster(self)
         # Highest sim_time seen from EITHER stream, for /clock only (see
-        # _stamp_from_sim_time). Written from both the lidar and imu accept
+        # _stamp_from_sim_time). Written from the lidar, imu and pose accept
         # threads, so guarded by its own lock.
         self._last_sim_time = 0.0
         self._clock_lock = threading.Lock()
@@ -75,6 +86,9 @@ class Mid360TcpBridge(Node):
             "lidar", PORT_LIDAR, self._lidar_read_loop
         )
         self._imu_thread = self._start_listener("imu", PORT_IMU, self._imu_read_loop)
+        self._pose_thread = self._start_listener(
+            "pose", PORT_POSE, self._pose_read_loop
+        )
 
     def _start_listener(self, name: str, port: int, read_loop) -> threading.Thread:
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -120,6 +134,12 @@ class Mid360TcpBridge(Node):
             (length,) = struct.unpack(">I", header[1:5])
             self._publish_imu(recv_exact(conn, length))
 
+    def _pose_read_loop(self, conn: socket.socket) -> None:
+        while rclpy.ok():
+            header = recv_exact(conn, 5)
+            (length,) = struct.unpack(">I", header[1:5])
+            self._publish_pose(recv_exact(conn, length))
+
     def _publish_lidar(self, payload: bytes) -> None:
         stamp, num_points = struct.unpack_from("<dI", payload, 0)
         points = np.frombuffer(payload, dtype=np.float32, offset=12, count=num_points * 4)
@@ -160,6 +180,22 @@ class Mid360TcpBridge(Node):
         msg.linear_acceleration.y = float(ay)
         msg.linear_acceleration.z = float(az)
         self.imu_pub.publish(msg)
+
+    def _publish_pose(self, payload: bytes) -> None:
+        stamp, x, y, z, qw, qx, qy, qz = struct.unpack("<d7d", payload)
+
+        msg = TransformStamped()
+        msg.header.stamp = self._stamp_from_sim_time(stamp)
+        msg.header.frame_id = ODOM_FRAME_ID
+        msg.child_frame_id = BASE_FRAME_ID
+        msg.transform.translation.x = x
+        msg.transform.translation.y = y
+        msg.transform.translation.z = z
+        msg.transform.rotation.w = qw
+        msg.transform.rotation.x = qx
+        msg.transform.rotation.y = qy
+        msg.transform.rotation.z = qz
+        self.tf_broadcaster.sendTransform(msg)
 
     def _stamp_from_sim_time(self, sim_time: float) -> Time:
         # Each message keeps its OWN true sim_time as its header stamp - never clamped or

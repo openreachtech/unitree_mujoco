@@ -89,8 +89,13 @@ BRIDGE_HOST = "127.0.0.1"
 # throughput at well under its real 200Hz.
 BRIDGE_PORT_LIDAR = 8360
 BRIDGE_PORT_IMU = 8361
+# Ground-truth base_link pose (world frame), used to publish odom->base_link
+# directly from the sim instead of relying on rko_lio's LIO estimate - see
+# run_pose_thread's docstring.
+BRIDGE_PORT_POSE = 8362
 LIDAR_HZ = 10.0
 IMU_HZ = 200.0  # matches the real MID-360's IMU output rate
+POSE_HZ = 100.0
 LIDAR_SITE = "livox_mid360"
 
 
@@ -132,6 +137,7 @@ class Mid360Lidar:
         self.acc_id = mj_model.sensor("mid360_imu_acc").id
         self.quat_id = mj_model.sensor("mid360_imu_quat").id
         self.lidar_site_id = mj_model.site(LIDAR_SITE).id
+        self.base_link_id = mj_model.body("base_link").id
 
         # MuJoCo's compiler recenters mesh vertices onto their inertial frame and
         # records the (pos, quat) of that recentering as mesh_pos/mesh_quat - the raw
@@ -150,6 +156,7 @@ class Mid360Lidar:
         # needed for either one individually.
         self._lidar_sock = None
         self._imu_sock = None
+        self._pose_sock = None
 
         self.num_rays = self.livox.sample_ray_angles()[0].shape[0]
         # Real MID-360 vertical FOV (read from the actual generated pattern, not
@@ -201,6 +208,42 @@ class Mid360Lidar:
             except OSError:
                 pass
             self._imu_sock = None
+
+    def _send_pose(self, payload: bytes) -> None:
+        if self._pose_sock is None:
+            self._pose_sock = self._connect(BRIDGE_PORT_POSE)
+            if self._pose_sock is None:
+                return
+        try:
+            self._pose_sock.sendall(payload)
+        except OSError:
+            try:
+                self._pose_sock.close()
+            except OSError:
+                pass
+            self._pose_sock = None
+
+    def publish_pose(self) -> None:
+        # Ground-truth base_link pose in MuJoCo's world frame - see
+        # run_pose_thread's docstring for why this exists (a drop-in
+        # replacement for rko_lio's odom->base_link when its LIO estimate
+        # isn't needed/available). xpos/xquat are always current after
+        # mj_step, for any joint type, so no qpos index bookkeeping needed.
+        self.locker.acquire()
+        try:
+            pos = np.array(self.mj_data.xpos[self.base_link_id], dtype=np.float64)
+            quat = np.array(self.mj_data.xquat[self.base_link_id], dtype=np.float64)  # w x y z
+            stamp = self.mj_data.time
+        finally:
+            self.locker.release()
+
+        payload = struct.pack(
+            "<d7d",
+            stamp,
+            pos[0], pos[1], pos[2],
+            quat[0], quat[1], quat[2], quat[3],
+        )
+        self._send_pose(b"P" + struct.pack(">I", len(payload)) + payload)
 
     def publish_lidar(self) -> None:
         # Pure computation, no mj_data dependency - do it before taking the physics
@@ -440,4 +483,31 @@ def run_imu_thread(mid360: Mid360Lidar, is_running) -> None:
         if now - last_imu >= 1.0 / IMU_HZ:
             last_imu = now
             mid360.publish_imu()
+        time.sleep(0.001)
+
+
+def run_pose_thread(mid360: Mid360Lidar, is_running) -> None:
+    """Rate-limited loop: call from its own dedicated thread.
+
+    Publishes MuJoCo's ground-truth base_link pose (world frame) over its own TCP
+    connection so mid360_tcp_to_ros2.py can broadcast odom->base_link directly from
+    the sim, instead of that TF coming from rko_lio's own LIO estimate. rko_lio's
+    online_imu_rate_node has no automatic recovery from a "LiDAR scan delta exceeds
+    1 second" InputError (unlike its RegistrationError path, which does have
+    reset_on_registration_error) - once that fires (which it reliably does within
+    the first ~1s after every restart, on however many low-keypoint scans it takes
+    to blow through that budget), every following scan is dropped too and rko_lio
+    never recovers on its own, wedging heightmap_generator's TF lookups. This gives
+    heightmap_generator a source for that TF that just always works, at the cost of
+    it being ground truth rather than a real odometry estimate - appropriate for
+    testing the heightmap pipeline itself in sim, not for evaluating LIO fidelity.
+
+    Gated on simulated time (mj_data.time) - see run_lidar_thread's docstring.
+    """
+    last_pose = -1.0
+    while is_running():
+        now = mid360.mj_data.time
+        if now - last_pose >= 1.0 / POSE_HZ:
+            last_pose = now
+            mid360.publish_pose()
         time.sleep(0.001)

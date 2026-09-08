@@ -9,7 +9,7 @@ from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 from unitree_sdk2py_bridge import UnitreeSdk2Bridge, ElasticBand
 
 import config
-from mid360_lidar import Mid360Lidar, init_lidar_scene, run_imu_thread, run_lidar_thread, update_lidar_scene
+from mid360_lidar import Mid360Lidar, init_lidar_scene, run_imu_thread, run_lidar_thread, run_pose_thread, update_lidar_scene
 
 # CPython's default GIL switch interval (5ms) is right at IMU_HZ=200's own
 # 5ms sampling period, so under any thread contention (sim/viewer/lidar
@@ -123,6 +123,7 @@ if __name__ == "__main__":
     )
     lidar_thread = Thread(target=run_lidar_thread, args=(mid360, viewer.is_running))
     imu_thread = Thread(target=run_imu_thread, args=(mid360, viewer.is_running))
+    pose_thread = Thread(target=run_pose_thread, args=(mid360, viewer.is_running))
 
     viewer_thread = Thread(target=PhysicsViewerThread)
     sim_thread = Thread(target=SimulationThread)
@@ -132,3 +133,4 @@ if __name__ == "__main__":
     if config.ENABLE_MID360_LIDAR:
         lidar_thread.start()
     imu_thread.start()
+    pose_thread.start()

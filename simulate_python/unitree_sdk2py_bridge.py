@@ -18,6 +18,8 @@ from unitree_sdk2py.idl.default import unitree_go_msg_dds__SportModeState_
 from unitree_sdk2py.idl.default import unitree_go_msg_dds__WirelessController_
 from unitree_sdk2py.utils.thread import RecurrentThread
 
+from lowstate_ros2_relay import LowStateRelay
+
 import config
 if config.ROBOT=="g1":
     from unitree_sdk2py.idl.unitree_hg.msg.dds_ import LowCmd_
@@ -51,6 +53,20 @@ class UnitreeSdk2Bridge:
         self.idl_type = (self.num_motor > NUM_MOTOR_IDL_GO) # 0: unitree_go, 1: unitree_hg
 
         self.joystick = None
+
+        # foot_force[4] in LowState: FR/FL/RR/RL touch sensors, present only on robots
+        # (currently just go2) whose XML defines them - see go2.xml's "*_foot_force"
+        # sensors. None of the sim data offset math below depends on these, since
+        # they're looked up by name/sensor_adr, not a fixed dim_motor_sensor+N offset.
+        self.foot_force_sensor_adr = None
+        foot_force_names = ["FR_foot_force", "FL_foot_force", "RR_foot_force", "RL_foot_force"]
+        try:
+            self.foot_force_sensor_adr = [
+                self.mj_model.sensor_adr[self.mj_model.sensor(name).id]
+                for name in foot_force_names
+            ]
+        except KeyError:
+            pass
 
         # Check sensor
         for i in range(self.dim_motor_sensor, self.mj_model.nsensor):
@@ -93,6 +109,8 @@ class UnitreeSdk2Bridge:
 
         self.low_cmd_suber = ChannelSubscriber(TOPIC_LOWCMD, LowCmd_)
         self.low_cmd_suber.Init(self.LowCmdHandler, 10)
+
+        self.lowstate_ros2_relay = LowStateRelay()
 
         # joystick
         self.key_map = {
@@ -138,6 +156,19 @@ class UnitreeSdk2Bridge:
                 self.low_state.motor_state[i].tau_est = self.mj_data.sensordata[
                     i + 2 * self.num_motor
                 ]
+                # 1 == servo-on/under active control on the real robot; the sim always
+                # runs its motors under PD control from LowCmdHandler, so this is
+                # always true here (unlike temperature/lost, which have no sim analog
+                # and are left at their LowState default of 0).
+                self.low_state.motor_state[i].mode = 1
+
+            if self.foot_force_sensor_adr is not None:
+                for i, adr in enumerate(self.foot_force_sensor_adr):
+                    # foot_force is int16; a hard landing's instantaneous contact
+                    # force can exceed that range, so clamp rather than let cyclonedds
+                    # raise on an out-of-range assignment.
+                    force = int(round(self.mj_data.sensordata[adr]))
+                    self.low_state.foot_force[i] = max(-32768, min(32767, force))
 
             if self.have_frame_sensor_:
 
@@ -239,6 +270,13 @@ class UnitreeSdk2Bridge:
                 self.low_state.wireless_remote[20:24] = packs[3]
 
             self.low_state_puber.Write(self.low_state)
+            self.lowstate_ros2_relay.publish(
+                self.low_state,
+                self.num_motor,
+                self.have_frame_sensor_,
+                self.foot_force_sensor_adr is not None,
+                self.mj_data.time,
+            )
 
     def PublishHighState(self):
 

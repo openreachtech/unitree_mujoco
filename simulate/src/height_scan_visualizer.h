@@ -14,7 +14,7 @@ class HeightScanVisualizer
 public:
     HeightScanVisualizer(mjModel* model, mjData* data);
 
-    void update(const std::vector<float>& height_scan, const mjtNum* site_pos, float imu_yaw);
+    void update(const std::vector<float>& height_scan, const mjtNum* grid_ref_pos, float imu_yaw);
 
     bool enabled() const { return enabled_; }
     void set_enabled(bool enabled);

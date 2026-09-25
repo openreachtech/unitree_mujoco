@@ -164,7 +164,7 @@ class TerrainGenerator:
                         width=0.05,
                         height=0.25,
                         length=1.0,
-                        plate_thickness=0.02):
+                        plate_thickness=0.04):
 
         # Floating thin wall: no supporting wall, only a flat plate hovering
         # at the top height (its top face aligns with a normal wall's top).
@@ -308,15 +308,26 @@ if __name__ == "__main__":
     # Suspend stairs
     tg.AddSuspendStairs(init_pos=[1.0, 6.0, 0.0], yaw=0.0)
 
-    # Thin walls (3 types): [width, height] = [0.05, 0.25], [0.08, 0.20], [0.10, 0.15], all 1 m long
-    tg.AddWall(init_pos=[-3.0, 0.0, 0.0], yaw=0.0, width=0.05, height=0.25, length=1.0)
-    tg.AddWall(init_pos=[-3.0, 1.5, 0.0], yaw=0.0, width=0.08, height=0.20, length=1.0)
-    tg.AddWall(init_pos=[-3.0, 3.0, 0.0], yaw=0.0, width=0.10, height=0.15, length=1.0)
+    # Thin walls, 25 / 30 / 35 cm at y = 0.0 / 1.5 / 3.0, all 1 m long.
+    #
+    # Thickness is pinned at 5 cm rather than widening for the lower walls, so height is
+    # the only thing that changes between them. 5 cm is the thinnest the Isaac curriculum
+    # ever produces, and it is what the Phase 5 play course and the crossing benchmark both
+    # use -- so these three walls are directly comparable to the measured numbers
+    # (100 % crossed at 30 cm solid, 96 % floating). 35 cm is past the training range's
+    # 30 cm ceiling and is there to find the edge.
+    # length 1.5 against a 1.5 m pitch, so the three butt together into one continuous
+    # face with no gap to walk through between heights.
+    tg.AddWall(init_pos=[-4.0, 0.0, 0.0], yaw=0.0, width=0.05, height=0.25, length=1.5)
+    tg.AddWall(init_pos=[-4.0, 1.5, 0.0], yaw=0.0, width=0.05, height=0.30, length=1.5)
+    tg.AddWall(init_pos=[-4.0, 3.0, 0.0], yaw=0.0, width=0.05, height=0.35, length=1.5)
 
-    # Floating thin walls (3 types): same dimensions, flat plate hovering at top height
-    tg.AddFloatingWall(init_pos=[-4.5, 0.0, 0.0], yaw=0.0, width=0.05, height=0.25, length=1.0)
-    tg.AddFloatingWall(init_pos=[-4.5, 1.5, 0.0], yaw=0.0, width=0.08, height=0.20, length=1.0)
-    tg.AddFloatingWall(init_pos=[-4.5, 3.0, 0.0], yaw=0.0, width=0.10, height=0.15, length=1.0)
+    # Floating thin walls at the same heights: only the tread, hovering with an open gap
+    # beneath. plate_thickness matches MeshFloatingThinWallTerrainCfg.tread_thickness, so
+    # the gap under the tread is the same as in training (height - 0.04).
+    tg.AddFloatingWall(init_pos=[-5.5, 0.0, 0.0], yaw=0.0, width=0.05, height=0.25, length=1.5)
+    tg.AddFloatingWall(init_pos=[-5.5, 1.5, 0.0], yaw=0.0, width=0.05, height=0.30, length=1.5)
+    tg.AddFloatingWall(init_pos=[-5.5, 3.0, 0.0], yaw=0.0, width=0.05, height=0.35, length=1.5)
 
     # Rough ground
     tg.AddRoughGround(init_pos=[-2.5, 5.0, 0.0],

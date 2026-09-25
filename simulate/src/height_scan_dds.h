@@ -20,7 +20,13 @@ inline constexpr float kResolution = 0.05f;
 // Matches deploy / velocity_env_cfg_go2.GO2_HEIGHT_SCAN_OFFSET
 // (= 0.32 + (-0.046825)).
 inline constexpr float kOffset = 0.273175f;
-inline constexpr float kEmpty = -1.0f;
+// What a cell reads on flat ground at nominal stance: GO2_NOMINAL_BASE_Z - kOffset,
+// i.e. 0.32 - 0.273175. This is velocity_env_cfg_go2.GO2_FLAT_SCAN_VALUE, and it is what
+// LidarElevationMap fills a cell with before any beam has reached it.
+//
+// There is no "empty" value: a LiDAR-built map has nothing to say about a cell nothing
+// reached, so the cell keeps what it last held and starts at this.
+inline constexpr float kFlatFill = 0.046825f;
 inline constexpr float kClipMin = -1.0f;
 inline constexpr float kClipMax = 5.0f;
 

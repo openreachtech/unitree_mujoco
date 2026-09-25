@@ -280,7 +280,7 @@ public:
             height_map_->update(mj_data_->time);
             if (height_scan_viz_ && height_scan_viz_->enabled())
             {
-                const mjtNum* site = height_map_->site_pos();
+                const mjtNum* site = height_map_->grid_ref_pos();
                 if (site)
                 {
                     height_scan_viz_->update(

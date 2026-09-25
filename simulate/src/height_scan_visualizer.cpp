@@ -79,7 +79,7 @@ void HeightScanVisualizer::hide_all()
 
 void HeightScanVisualizer::update(
     const std::vector<float>& height_scan,
-    const mjtNum* site_pos,
+    const mjtNum* grid_ref_pos,
     float imu_yaw)
 {
     if (!enabled_ || !mj_data_ || mocap_body_ids_.size() != static_cast<size_t>(height_scan::kGridSize))
@@ -113,7 +113,10 @@ void HeightScanVisualizer::update(
             mjtNum* pos = mj_data_->mocap_pos + 3 * mocap_id;
             const float value = height_scan[idx];
 
-            if (value <= height_scan::kEmpty + 1e-3f)
+            // Saturated low: the terrain is more than a metre above the sensor plane, so
+            // the marker would be drawn somewhere useless. (Nothing publishes a sentinel
+            // any more -- every cell holds a real value or the flat fill.)
+            if (value <= height_scan::kClipMin + 1e-3f)
             {
                 pos[0] = 0.0;
                 pos[1] = 0.0;
@@ -121,13 +124,18 @@ void HeightScanVisualizer::update(
                 continue;
             }
 
-            const float x_cell = x_min + (static_cast<float>(ix) + 0.5f) * height_scan::kResolution;
-            const float y_cell = y_min + (static_cast<float>(iy) + 0.5f) * height_scan::kResolution;
+            // No half-cell offset: GridPatternCfg puts cell centres *on*
+            // linspace(-size/2, size/2, n), which is what compute_height_map() bins
+            // against, so adding half a resolution here drew every marker 2.5 cm off the
+            // cell it belongs to.
+            const float x_cell = x_min + static_cast<float>(ix) * height_scan::kResolution;
+            const float y_cell = y_min + static_cast<float>(iy) * height_scan::kResolution;
+            // Undo base_z - hit_z - kOffset to get back to the hit's world z.
             const float z_cell = -(value + height_scan::kOffset);
 
-            pos[0] = site_pos[0] + cy * x_cell - sy * y_cell;
-            pos[1] = site_pos[1] + sy * x_cell + cy * y_cell;
-            pos[2] = site_pos[2] + z_cell;
+            pos[0] = grid_ref_pos[0] + cy * x_cell - sy * y_cell;
+            pos[1] = grid_ref_pos[1] + sy * x_cell + cy * y_cell;
+            pos[2] = grid_ref_pos[2] + z_cell;
         }
     }
 }

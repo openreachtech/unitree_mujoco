@@ -38,6 +38,15 @@ torque_speed_curves:
     # these by the torque ratio (6.95 / 15.45) made the knee unusable for jumping.
     X1: 13.5
     X2: 30.0
+  # Go2W wheels (go2w.xml actuators FR_wheel ... RL_wheel): no derate. There is no spec for
+  # the wheel motor, and unitree_rl_lab models them flat at 23.7 N*m (go2w.xml ctrlrange) --
+  # without this entry the "" catch-all below would give them the leg curve and cut their
+  # torque to zero at 30 rad/s. Must stay above "". go2 has no wheel actuators.
+  - pattern: "wheel"
+    Y1: 23.7
+    Y2: 23.7
+    X1: 1000.0
+    X2: 1001.0
   - pattern: ""
     Y1: 20.2
     Y2: 23.4

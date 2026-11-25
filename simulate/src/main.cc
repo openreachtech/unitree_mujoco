@@ -35,6 +35,7 @@
 #include "height_scan_visualizer.h"
 #include "unitree_sdk2_bridge.h"
 #include "param.h"
+#include <unitree/idl/ros2/String_.hpp>
 
 #define MUJOCO_PLUGIN_DIR "mujoco_plugin"
 #define NUM_MOTOR_IDL_GO 20
@@ -85,6 +86,7 @@ public:
   std::vector<double> f_ = {0, 0, 0};
 };
 inline ElasticBand elastic_band;
+constexpr const char* ELASTIC_BAND_TOPIC = "rt/sim/elastic_band";
 
 
 namespace
@@ -501,6 +503,14 @@ namespace
                     d->xfrc_applied[param::config.band_attached_link + 1] = elastic_band.f_[1];
                     d->xfrc_applied[param::config.band_attached_link + 2] = elastic_band.f_[2];
                   }
+                  else
+                  {
+                    // MuJoCo keeps xfrc_applied until overwritten: without this the last band
+                    // force (about the robot's weight) stays on after key 9 releases the band.
+                    d->xfrc_applied[param::config.band_attached_link] = 0.0;
+                    d->xfrc_applied[param::config.band_attached_link + 1] = 0.0;
+                    d->xfrc_applied[param::config.band_attached_link + 2] = 0.0;
+                  }
                 }
 
                 // call mj_step
@@ -601,7 +611,22 @@ void *UnitreeSdk2BridgeThread(void *arg)
     interface = std::make_unique<Go2Bridge>(m, d);
   }
   interface->start();
-  
+
+  // Elastic band commands from the controller's terminal (g1_ctrl keys 9 / 8 / 7):
+  // "toggle", "down", "up", the same as keys 9 / 8 / 7 in this window.
+  unitree::robot::ChannelSubscriber<std_msgs::msg::dds_::String_> band_sub(ELASTIC_BAND_TOPIC);
+  band_sub.InitChannel([](const void* msg) {
+    if (param::config.enable_elastic_band != 1) return;
+    const auto& cmd = static_cast<const std_msgs::msg::dds_::String_*>(msg)->data();
+    if (cmd == "toggle") {
+      elastic_band.enable_ = !elastic_band.enable_;
+    } else if (cmd == "down") {
+      elastic_band.length_ += 0.1;
+    } else if (cmd == "up") {
+      elastic_band.length_ -= 0.1;
+    }
+  }, 1);
+
   while (true)
   {
     sleep(1);

@@ -63,6 +63,7 @@ inline po::variables_map helper(int argc, char** argv)
         ("network,n", po::value<std::string>(&config.interface), "DDS network interface; -n eth0")
         ("robot,r", po::value<std::string>(&config.robot), "Robot type; -r go2")
         ("scene,s", po::value<std::filesystem::path>(&config.robot_scene), "Robot scene file; -s scene_terrain.xml")
+        ("elastic_band,e", po::value<int>(&config.enable_elastic_band), "Virtual spring band holding the torso (humanoids); -e 1. Key 9 releases it")
     ;
 
     po::variables_map vm;

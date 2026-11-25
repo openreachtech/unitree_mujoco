@@ -1,0 +1,219 @@
+<mujoco model="g1_29dof testbench_v3_room">
+  <!-- Geoms copied from tsubame_robot tsubame_description/mjcf/testbench_v3_room.xml
+       (autotest/courses.py testbench_room_scene: testbench + stairs/slope course + room walls).
+       The robot stands at the origin facing +x; the 15 cm stairs -> 0.6 m platform -> 20 deg
+       slope course is at y = -1.05 from x = 1.0, the testbench at y = 0.5 .. 1.7. -->
+  <include file="g1_29dof.xml"/>
+
+  <statistic center="0 0 0.5" extent="2.0"/>
+
+  <visual>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0"/>
+    <rgba haze="0.15 0.25 0.35 1"/>
+    <global azimuth="-130" elevation="-20"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="3072"/>
+  </asset>
+
+  <worldbody>
+    <light pos="0 0 2.5" dir="0 0 -1" directional="true"/>
+    <geom name="floor" pos="0 0 0.0000" size="0 0 0.05" type="plane" rgba="0.3 0.35 0.4 1"/>
+    <geom name="bench0" type="box" pos="2.2625 1.1625 0.1055" size="0.0125 0.5375 0.0875" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench1" type="box" pos="2.2625 1.5150 0.2280" size="0.0125 0.1150 0.0100" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench2" type="box" pos="2.2625 1.5200 0.2630" size="0.0125 0.1100 0.0250" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench3" type="box" pos="2.2625 1.6350 0.7482" size="0.0125 0.0050 0.4902" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench4" type="box" pos="2.2625 1.6450 0.7532" size="0.0125 0.0050 0.4852" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench5" type="box" pos="2.2625 1.6550 0.7532" size="0.0125 0.0050 0.4752" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench6" type="box" pos="2.2625 1.5250 0.3130" size="0.0125 0.1050 0.0250" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench7" type="box" pos="2.2625 1.6800 0.7482" size="0.0125 0.0200 0.4602" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench8" type="box" pos="2.2625 1.5300 0.3631" size="0.0125 0.1000 0.0250" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench9" type="box" pos="2.2625 1.5350 0.4131" size="0.0125 0.0950 0.0250" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench10" type="box" pos="2.2625 1.5400 0.4631" size="0.0125 0.0900 0.0250" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench11" type="box" pos="2.2625 1.5450 0.5131" size="0.0125 0.0850 0.0250" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench12" type="box" pos="2.2625 1.5500 0.5631" size="0.0125 0.0800 0.0250" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench13" type="box" pos="2.2625 1.5550 0.6132" size="0.0125 0.0750 0.0250" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench14" type="box" pos="2.2625 1.5600 0.6632" size="0.0125 0.0700 0.0250" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench15" type="box" pos="2.2625 1.5650 0.7132" size="0.0125 0.0650 0.0250" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench16" type="box" pos="2.2625 1.5700 0.7632" size="0.0125 0.0600 0.0250" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench17" type="box" pos="2.2625 1.5750 0.8132" size="0.0125 0.0550 0.0250" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench18" type="box" pos="2.2625 1.5800 0.8633" size="0.0125 0.0500 0.0250" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench19" type="box" pos="2.2625 1.5850 0.9133" size="0.0125 0.0450 0.0250" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench20" type="box" pos="2.2625 1.5900 0.9633" size="0.0125 0.0400 0.0250" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench21" type="box" pos="2.2625 1.5950 1.0133" size="0.0125 0.0350 0.0250" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench22" type="box" pos="2.2625 1.6000 1.0633" size="0.0125 0.0300 0.0250" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench23" type="box" pos="2.2625 1.6050 1.1134" size="0.0125 0.0250 0.0250" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench24" type="box" pos="2.2625 1.6100 1.1634" size="0.0125 0.0200 0.0250" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench25" type="box" pos="2.2625 1.6150 1.2134" size="0.0125 0.0150 0.0250" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench26" type="box" pos="2.2625 1.6750 1.2134" size="0.0125 0.0150 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench27" type="box" pos="2.2625 1.6650 1.2234" size="0.0125 0.0050 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench28" type="box" pos="2.2625 1.6200 1.2434" size="0.0125 0.0100 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench29" type="box" pos="2.2625 1.6150 1.2534" size="0.0125 0.0050 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench30" type="box" pos="3.3625 1.5150 0.2829" size="0.0125 0.1150 0.0149" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench31" type="box" pos="3.3625 1.5200 0.3228" size="0.0125 0.1100 0.0249" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench32" type="box" pos="3.3625 1.6350 0.7757" size="0.0125 0.0050 0.4679" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench33" type="box" pos="3.3625 1.6450 0.7757" size="0.0125 0.0050 0.4580" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench34" type="box" pos="3.3625 1.6550 0.7807" size="0.0125 0.0050 0.4530" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench35" type="box" pos="3.3625 1.6750 0.7757" size="0.0125 0.0150 0.4381" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench36" type="box" pos="3.3625 1.5250 0.3725" size="0.0125 0.1050 0.0249" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench37" type="box" pos="3.3625 1.6950 0.7757" size="0.0125 0.0050 0.4281" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench38" type="box" pos="3.3625 1.5300 0.4223" size="0.0125 0.1000 0.0249" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench39" type="box" pos="3.3625 1.5350 0.4721" size="0.0125 0.0950 0.0249" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench40" type="box" pos="3.3625 1.5400 0.5219" size="0.0125 0.0900 0.0249" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench41" type="box" pos="3.3625 1.5450 0.5717" size="0.0125 0.0850 0.0249" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench42" type="box" pos="3.3625 1.5500 0.6214" size="0.0125 0.0800 0.0249" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench43" type="box" pos="3.3625 1.5550 0.6712" size="0.0125 0.0750 0.0249" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench44" type="box" pos="3.3625 1.5600 0.7210" size="0.0125 0.0700 0.0249" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench45" type="box" pos="3.3625 1.5650 0.7708" size="0.0125 0.0650 0.0249" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench46" type="box" pos="3.3625 1.5700 0.8205" size="0.0125 0.0600 0.0249" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench47" type="box" pos="3.3625 1.5750 0.8703" size="0.0125 0.0550 0.0249" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench48" type="box" pos="3.3625 1.5800 0.9201" size="0.0125 0.0500 0.0249" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench49" type="box" pos="3.3625 1.5850 0.9699" size="0.0125 0.0450 0.0249" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench50" type="box" pos="3.3625 1.5900 1.0197" size="0.0125 0.0400 0.0249" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench51" type="box" pos="3.3625 1.5950 1.0694" size="0.0125 0.0350 0.0249" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench52" type="box" pos="3.3625 1.6000 1.1192" size="0.0125 0.0300 0.0249" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench53" type="box" pos="3.3625 1.6050 1.1690" size="0.0125 0.0250 0.0249" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench54" type="box" pos="3.3625 1.6100 1.2188" size="0.0125 0.0200 0.0249" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench55" type="box" pos="3.3625 1.6700 1.2188" size="0.0125 0.0100 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench56" type="box" pos="3.3625 1.6100 1.2486" size="0.0125 0.0100 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench57" type="box" pos="3.3625 1.6050 1.2586" size="0.0125 0.0050 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench58" type="box" pos="4.5125 1.5150 0.6280" size="0.0125 0.1150 0.0100" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench59" type="box" pos="4.5125 1.5200 0.6631" size="0.0125 0.1100 0.0251" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench60" type="box" pos="4.5125 1.6350 0.9489" size="0.0125 0.0050 0.2908" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench61" type="box" pos="4.5125 1.6450 0.9539" size="0.0125 0.0050 0.2858" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench62" type="box" pos="4.5125 1.6550 0.9539" size="0.0125 0.0050 0.2757" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench63" type="box" pos="4.5125 1.5250 0.7133" size="0.0125 0.1050 0.0251" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench64" type="box" pos="4.5125 1.6800 0.9489" size="0.0125 0.0200 0.2607" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench65" type="box" pos="4.5125 1.5300 0.7634" size="0.0125 0.1000 0.0251" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench66" type="box" pos="4.5125 1.5350 0.8135" size="0.0125 0.0950 0.0251" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench67" type="box" pos="4.5125 1.5400 0.8637" size="0.0125 0.0900 0.0251" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench68" type="box" pos="4.5125 1.5450 0.9138" size="0.0125 0.0850 0.0251" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench69" type="box" pos="4.5125 1.5500 0.9639" size="0.0125 0.0800 0.0251" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench70" type="box" pos="4.5125 1.5550 1.0141" size="0.0125 0.0750 0.0251" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench71" type="box" pos="4.5125 1.5600 1.0642" size="0.0125 0.0700 0.0251" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench72" type="box" pos="4.5125 1.5650 1.1143" size="0.0125 0.0650 0.0251" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench73" type="box" pos="4.5125 1.5700 1.1645" size="0.0125 0.0600 0.0251" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench74" type="box" pos="4.5125 1.5750 1.2146" size="0.0125 0.0550 0.0251" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench75" type="box" pos="4.5125 1.6700 1.2146" size="0.0125 0.0100 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench76" type="box" pos="4.5125 1.6650 1.2246" size="0.0125 0.0050 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench77" type="box" pos="4.5125 1.5800 1.2447" size="0.0125 0.0500 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench78" type="box" pos="4.5125 1.5700 1.2547" size="0.0125 0.0400 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench79" type="box" pos="4.5125 1.5650 1.2647" size="0.0125 0.0350 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench80" type="box" pos="4.5125 1.5550 1.2747" size="0.0125 0.0250 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench81" type="box" pos="4.5125 1.5450 1.2848" size="0.0125 0.0150 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench82" type="box" pos="4.5125 1.5450 1.2948" size="0.0125 0.0050 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench83" type="box" pos="2.8000 0.6125 0.1555" size="1.7000 0.0125 0.1375" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench84" type="box" pos="3.3625 1.1625 0.2555" size="0.0500 0.5375 0.0125" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench85" type="box" pos="2.2625 1.1625 0.2055" size="0.0500 0.5375 0.0125" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench86" type="box" pos="1.0875 1.1000 0.1230" size="0.0125 0.6000 0.1050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench87" type="box" pos="1.0875 0.7700 0.2330" size="0.0125 0.2700 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench88" type="box" pos="1.0875 1.4300 0.2330" size="0.0125 0.2700 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench89" type="box" pos="1.0875 0.7500 0.2430" size="0.0125 0.2500 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench90" type="box" pos="1.0875 1.4500 0.2430" size="0.0125 0.2500 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench91" type="box" pos="1.0875 0.7400 0.2530" size="0.0125 0.2400 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench92" type="box" pos="1.0875 1.4600 0.2530" size="0.0125 0.2400 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench93" type="box" pos="1.0875 0.7300 0.2630" size="0.0125 0.2300 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench94" type="box" pos="1.0875 1.4700 0.2630" size="0.0125 0.2300 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench95" type="box" pos="1.0875 0.7200 0.2730" size="0.0125 0.2200 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench96" type="box" pos="1.0875 1.4800 0.2730" size="0.0125 0.2200 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench97" type="box" pos="1.0875 0.7100 0.2830" size="0.0125 0.2100 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench98" type="box" pos="1.0875 1.4900 0.2830" size="0.0125 0.2100 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench99" type="box" pos="1.0875 0.7050 0.2930" size="0.0125 0.2050 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench100" type="box" pos="1.0875 1.4950 0.2930" size="0.0125 0.2050 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench101" type="box" pos="1.0875 0.7000 0.3030" size="0.0125 0.2000 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench102" type="box" pos="1.0875 1.5000 0.3030" size="0.0125 0.2000 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench103" type="box" pos="1.0875 0.6950 0.3130" size="0.0125 0.1950 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench104" type="box" pos="1.0875 1.5050 0.3130" size="0.0125 0.1950 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench105" type="box" pos="1.0875 0.6900 0.3230" size="0.0125 0.1900 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench106" type="box" pos="1.0875 1.5100 0.3230" size="0.0125 0.1900 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench107" type="box" pos="1.0875 0.6850 0.3330" size="0.0125 0.1850 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench108" type="box" pos="1.0875 1.5150 0.3330" size="0.0125 0.1850 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench109" type="box" pos="1.0875 0.6800 0.3430" size="0.0125 0.1800 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench110" type="box" pos="1.0875 1.5200 0.3430" size="0.0125 0.1800 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench111" type="box" pos="1.0875 0.6750 0.3580" size="0.0125 0.1750 0.0100" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench112" type="box" pos="1.0875 1.5250 0.3580" size="0.0125 0.1750 0.0100" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench113" type="box" pos="1.0875 0.6700 0.3780" size="0.0125 0.1700 0.0100" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench114" type="box" pos="1.0875 1.5300 0.3780" size="0.0125 0.1700 0.0100" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench115" type="box" pos="1.0875 0.6650 0.3980" size="0.0125 0.1650 0.0100" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench116" type="box" pos="1.0875 1.5350 0.3980" size="0.0125 0.1650 0.0100" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench117" type="box" pos="1.0875 0.6600 0.4180" size="0.0125 0.1600 0.0100" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench118" type="box" pos="1.0875 1.5400 0.4180" size="0.0125 0.1600 0.0100" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench119" type="box" pos="1.0875 0.6550 0.4480" size="0.0125 0.1550 0.0200" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench120" type="box" pos="1.0875 1.5450 0.4480" size="0.0125 0.1550 0.0200" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench121" type="box" pos="1.0875 0.6500 0.9930" size="0.0125 0.1500 0.5250" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench122" type="box" pos="1.0875 1.5500 0.8380" size="0.0125 0.1500 0.3700" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench123" type="box" pos="1.0875 0.8050 1.1480" size="0.0125 0.0050 0.3700" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench124" type="box" pos="1.0875 1.3950 1.0780" size="0.0125 0.0050 0.3000" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench125" type="box" pos="1.0875 0.8150 1.1680" size="0.0125 0.0050 0.3500" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench126" type="box" pos="1.0875 1.3850 1.1030" size="0.0125 0.0050 0.2850" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench127" type="box" pos="1.0875 0.8250 1.1830" size="0.0125 0.0050 0.3350" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench128" type="box" pos="1.0875 1.3750 1.1180" size="0.0125 0.0050 0.2700" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench129" type="box" pos="1.0875 0.8350 1.1930" size="0.0125 0.0050 0.3250" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench130" type="box" pos="1.0875 1.3650 1.1330" size="0.0125 0.0050 0.2650" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench131" type="box" pos="1.0875 0.8450 1.2030" size="0.0125 0.0050 0.3150" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench132" type="box" pos="1.0875 1.3550 1.1480" size="0.0125 0.0050 0.2600" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench133" type="box" pos="1.0875 0.8550 1.2080" size="0.0125 0.0050 0.3100" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench134" type="box" pos="1.0875 1.3450 1.1530" size="0.0125 0.0050 0.2550" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench135" type="box" pos="1.0875 0.8650 1.2130" size="0.0125 0.0050 0.3050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench136" type="box" pos="1.0875 1.3350 1.1630" size="0.0125 0.0050 0.2550" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench137" type="box" pos="1.0875 0.8750 1.2230" size="0.0125 0.0050 0.2950" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench138" type="box" pos="1.0875 1.3250 1.1730" size="0.0125 0.0050 0.2450" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench139" type="box" pos="1.0875 0.8850 1.2280" size="0.0125 0.0050 0.2900" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench140" type="box" pos="1.0875 1.3150 1.1830" size="0.0125 0.0050 0.2450" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench141" type="box" pos="1.0875 0.8950 1.2330" size="0.0125 0.0050 0.2850" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench142" type="box" pos="1.0875 1.3050 1.1930" size="0.0125 0.0050 0.2450" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench143" type="box" pos="1.0875 0.9100 1.2380" size="0.0125 0.0100 0.2800" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench144" type="box" pos="1.0875 1.2900 1.1980" size="0.0125 0.0100 0.2400" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench145" type="box" pos="1.0875 0.9250 1.2430" size="0.0125 0.0050 0.2750" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench146" type="box" pos="1.0875 1.2750 1.2080" size="0.0125 0.0050 0.2400" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench147" type="box" pos="1.0875 0.9400 1.2480" size="0.0125 0.0100 0.2700" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench148" type="box" pos="1.0875 1.2600 1.2180" size="0.0125 0.0100 0.2400" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench149" type="box" pos="1.0875 0.9550 1.2530" size="0.0125 0.0050 0.2650" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench150" type="box" pos="1.0875 1.2450 1.2280" size="0.0125 0.0050 0.2400" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench151" type="box" pos="1.0875 0.9700 1.2580" size="0.0125 0.0100 0.2600" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench152" type="box" pos="1.0875 1.2300 1.2380" size="0.0125 0.0100 0.2400" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench153" type="box" pos="1.0875 0.9950 1.2630" size="0.0125 0.0150 0.2550" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench154" type="box" pos="1.0875 1.2050 1.2480" size="0.0125 0.0150 0.2400" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench155" type="box" pos="1.0875 1.0350 1.2680" size="0.0125 0.0250 0.2500" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench156" type="box" pos="1.0875 1.1650 1.2580" size="0.0125 0.0250 0.2400" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench157" type="box" pos="1.0875 1.1000 1.2730" size="0.0125 0.0400 0.2450" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench158" type="box" pos="1.0875 1.5450 1.2130" size="0.0125 0.1450 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench159" type="box" pos="1.0875 1.5350 1.2230" size="0.0125 0.1350 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench160" type="box" pos="1.0875 1.5250 1.2330" size="0.0125 0.1250 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench161" type="box" pos="1.0875 1.5150 1.2430" size="0.0125 0.1150 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench162" type="box" pos="1.0875 1.5100 1.2530" size="0.0125 0.1100 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench163" type="box" pos="1.0875 1.5000 1.2630" size="0.0125 0.1000 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench164" type="box" pos="1.0875 1.4900 1.2730" size="0.0125 0.0900 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench165" type="box" pos="1.0875 1.4850 1.2830" size="0.0125 0.0850 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench166" type="box" pos="1.0875 1.4750 1.2930" size="0.0125 0.0750 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench167" type="box" pos="1.0875 1.4650 1.3030" size="0.0125 0.0650 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench168" type="box" pos="1.0875 1.4550 1.3130" size="0.0125 0.0550 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench169" type="box" pos="1.0875 1.4500 1.3230" size="0.0125 0.0500 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench170" type="box" pos="1.0875 1.4400 1.3330" size="0.0125 0.0400 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench171" type="box" pos="1.0875 1.4300 1.3430" size="0.0125 0.0300 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench172" type="box" pos="1.0875 1.4200 1.3530" size="0.0125 0.0200 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench173" type="box" pos="1.0875 1.4150 1.3630" size="0.0125 0.0150 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench174" type="box" pos="1.0875 1.4050 1.3730" size="0.0125 0.0050 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench175" type="box" pos="1.0875 1.2850 1.4430" size="0.0125 0.0050 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench176" type="box" pos="1.0875 1.1950 1.4930" size="0.0125 0.0050 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench177" type="box" pos="1.0875 1.1600 1.5030" size="0.0125 0.0200 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench178" type="box" pos="1.0875 1.1550 1.5130" size="0.0125 0.0150 0.0050" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench179" type="box" pos="3.3625 1.1625 0.1305" size="0.0125 0.5375 0.1125" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench180" type="box" pos="2.8000 0.6125 0.3055" size="1.7000 0.0500 0.0125" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench181" type="box" pos="4.5125 1.1000 0.3055" size="0.0125 0.6000 0.2875" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench182" type="box" pos="2.8000 1.7060 0.6000" size="1.8000 0.0060 0.6000" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench183" type="box" pos="2.8000 1.1010 0.0090" size="1.8000 0.6010 0.0090" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench184" type="box" pos="4.5125 1.1000 0.6055" size="0.0500 0.6000 0.0125" rgba="0.75 0.65 0.5 1"/>
+    <geom name="bench185" type="box" pos="2.8000 1.4503 1.3564" size="1.8000 0.2628 0.1552" rgba="0.75 0.65 0.5 1"/>
+    <geom name="course1" type="box" pos="1.1500 -1.0500 0.0750" size="0.1500 0.4500 0.0750" rgba="0.6 0.6 0.65 1"/>
+    <geom name="course2" type="box" pos="1.4500 -1.0500 0.1500" size="0.1500 0.4500 0.1500" rgba="0.6 0.6 0.65 1"/>
+    <geom name="course3" type="box" pos="1.7500 -1.0500 0.2250" size="0.1500 0.4500 0.2250" rgba="0.6 0.6 0.65 1"/>
+    <geom name="course4" type="box" pos="2.3500 -1.0500 0.3000" size="0.4500 0.4500 0.3000" rgba="0.6 0.6 0.65 1"/>
+    <geom name="course5" type="box" pos="3.5102 -1.0500 0.0309" size="0.8620 0.4500 0.2919" quat="0.984808 0 0.173648 0" rgba="0.6 0.6 0.65 1"/>
+    <geom name="room_xn" type="box" pos="-2.0250 0.0000 0.5000" size="0.0250 3.0500 0.5000" rgba="0.7 0.7 0.7 1"/>
+    <geom name="room_xp" type="box" pos="7.5250 0.0000 0.5000" size="0.0250 3.0500 0.5000" rgba="0.7 0.7 0.7 1"/>
+    <geom name="room_yn" type="box" pos="2.7500 -3.0250 0.5000" size="4.8000 0.0250 0.5000" rgba="0.7 0.7 0.7 1"/>
+    <geom name="room_yp" type="box" pos="2.7500 3.0250 0.5000" size="4.8000 0.0250 0.5000" rgba="0.7 0.7 0.7 1"/>
+  </worldbody>
+</mujoco>

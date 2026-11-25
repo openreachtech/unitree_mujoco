@@ -25,6 +25,7 @@
 #include <iostream>
 #include <memory>
 #include <mutex>
+#include <atomic>
 #include <new>
 #include <string>
 #include <thread>
@@ -33,12 +34,16 @@
 #include "simulate.h"
 #include "array_safety.h"
 #include "height_scan_visualizer.h"
+#include "livox_sim.h"
 #include "unitree_sdk2_bridge.h"
 #include "param.h"
 #include <unitree/idl/ros2/String_.hpp>
 
 #define MUJOCO_PLUGIN_DIR "mujoco_plugin"
 #define NUM_MOTOR_IDL_GO 20
+
+// Set by the bridge thread once DDS is up (-l 1), stepped by the physics thread.
+std::atomic<LivoxSim*> g_livox{nullptr};
 
 extern "C"
 {
@@ -467,6 +472,7 @@ namespace
               // run single step, let next iteration deal with timing
               mj_step(m, d);
               stepped = true;
+              if (LivoxSim* livox = g_livox.load()) livox->step(m, d);
             }
 
             // in-sync: step until ahead of cpu
@@ -516,6 +522,7 @@ namespace
                 // call mj_step
                 mj_step(m, d);
                 stepped = true;
+                if (LivoxSim* livox = g_livox.load()) livox->step(m, d);
 
                 // break if reset
                 if (d->time < prevSim)
@@ -626,6 +633,14 @@ void *UnitreeSdk2BridgeThread(void *arg)
       elastic_band.length_ -= 0.1;
     }
   }, 1);
+
+  std::unique_ptr<LivoxSim> livox;
+  if (param::config.enable_livox == 1) {
+    std::string pattern = param::config.livox_pattern;
+    if (pattern.rfind("~/", 0) == 0 && std::getenv("HOME")) pattern = std::getenv("HOME") + pattern.substr(1);
+    livox = std::make_unique<LivoxSim>(m, pattern);
+    if (livox->ok()) g_livox = livox.get();
+  }
 
   while (true)
   {

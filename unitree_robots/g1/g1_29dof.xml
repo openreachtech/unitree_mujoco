@@ -215,6 +215,11 @@
             <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1"
               mesh="torso_link" />
             <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="torso_link" />
+            <!-- Livox MID-360 in the head, upside down, from unitree_ros g1_29dof_rev_1_0.urdf
+                 mid360_joint xyz="0.0002835 0.00003 0.428434" rpy="pi 0.0511207 0" (the -l 1 LiDAR sim).
+                 livox_imu: the built-in IMU, livox_frame + (0.0110, 0.02329, -0.04412). -->
+            <site name="livox_lidar" pos="0.0002835 0.00003 0.428434" quat="0 0.9996734 0 -0.0255576" size="0.01"/>
+            <site name="livox_imu" pos="0.013524 -0.02326 0.471934" quat="0 0.9996734 0 -0.0255576" size="0.005"/>
             <geom pos="0.0039635 0 -0.054" quat="1 0 0 0" type="mesh" contype="0" conaffinity="0"
               group="1" density="0" rgba="0.2 0.2 0.2 1" mesh="logo_link" />
             <geom pos="0.0039635 0 -0.054" quat="1 0 0 0" type="mesh" rgba="0.2 0.2 0.2 1"
@@ -521,6 +526,9 @@
     <framequat name="secondary_imu_quat" objtype="site" objname="secondary_imu" />
     <gyro name="secondary_imu_gyro" site="secondary_imu" noise="5e-4" cutoff="34.9"/>
     <accelerometer name="secondary_imu_acc" site="secondary_imu" noise="1e-2" cutoff="157"/>
+
+    <accelerometer name="livox_imu_acc" site="livox_imu" />
+    <gyro name="livox_imu_gyro" site="livox_imu" />
   </sensor>
 
 </mujoco>

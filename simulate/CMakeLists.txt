@@ -49,6 +49,7 @@ add_executable(
   src/height_map_simulator.cpp
   src/height_scan_visualizer.cpp
   src/height_scan_dds.cpp
+  src/livox_sim.cpp
 )
 
 add_executable(jstest src/joystick/jstest.cc src/joystick/joystick.cc)

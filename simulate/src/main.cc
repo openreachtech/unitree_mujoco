@@ -636,9 +636,7 @@ void *UnitreeSdk2BridgeThread(void *arg)
 
   std::unique_ptr<LivoxSim> livox;
   if (param::config.enable_livox == 1) {
-    std::string pattern = param::config.livox_pattern;
-    if (pattern.rfind("~/", 0) == 0 && std::getenv("HOME")) pattern = std::getenv("HOME") + pattern.substr(1);
-    livox = std::make_unique<LivoxSim>(m, pattern);
+    livox = std::make_unique<LivoxSim>(m, param::config.livox_pattern);
     if (livox->ok()) g_livox = livox.get();
   }
 
@@ -722,6 +720,9 @@ int main(int argc, char **argv)
   param::helper(argc, argv);
   if(param::config.robot_scene.is_relative()) {
     param::config.robot_scene = proj_dir.parent_path() / "unitree_robots" / param::config.robot / param::config.robot_scene;
+  }
+  if (std::filesystem::path(param::config.livox_pattern).is_relative()) {  // relative to simulate/
+    param::config.livox_pattern = (proj_dir / param::config.livox_pattern).string();
   }
 
   // simulate object encapsulates the UI

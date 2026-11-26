@@ -14,4 +14,4 @@ print_scene_information: 1 # Print link, joint and sensors information of robot
 enable_elastic_band: 0 # Virtual spring band, used for lifting h1
 
 enable_livox: 0 # Simulated MID-360 (-l 1): rt/livox/lidar + rt/livox/imu, livox_ros_driver2 format
-livox_pattern: "~/tsubame/tsubame_isaac_env/source/tsubame_isaac/tsubame_isaac/sensors/scan_patterns/mid360.npy" # recorded scan sequence
+livox_pattern: "scan_patterns/mid360.npy" # recorded scan sequence (azimuth, elevation); relative to simulate/
